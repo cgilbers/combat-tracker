@@ -1,5 +1,16 @@
-import { Box, List, ListItem, ListItemText, Typography } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import {
+    Alert,
+    Box,
+    Fab,
+    Link,
+    List,
+    ListItem,
+    ListItemText,
+    Typography,
+} from "@mui/material";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import { useAuth } from "../../auth/useAuth";
 import { getCampaignsForUser } from "../../firebase/data/campaign";
 import type { CampaignData } from "../../firebase/schemas/CampaignData";
@@ -7,6 +18,7 @@ import type { CampaignData } from "../../firebase/schemas/CampaignData";
 export const CampaignList = () => {
     const auth = useAuth();
     const [campaigns, setCampaigns] = useState<CampaignData[]>([]);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchCampaigns = async () => {
@@ -23,6 +35,10 @@ export const CampaignList = () => {
         fetchCampaigns();
     }, [auth.user]);
 
+    const handleCreateCampaign = async () => {
+        navigate("/campaigns/new");
+    };
+
     return (
         <Box>
             <Typography variant="h4" gutterBottom>
@@ -38,8 +54,19 @@ export const CampaignList = () => {
                     ))}
                 </List>
             ) : (
-                <p>No campaigns found.</p>
+                <Alert sx={{ m: 1 }} severity="info">
+                    No campaigns found. Please{" "}
+                    <Link onClick={handleCreateCampaign}>create</Link> one
+                </Alert>
             )}
+            <Fab
+                color="primary"
+                aria-label="add"
+                sx={{ position: "fixed", bottom: 16, right: 16 }}
+                onClick={handleCreateCampaign}
+            >
+                <AddIcon />
+            </Fab>
         </Box>
     );
 };

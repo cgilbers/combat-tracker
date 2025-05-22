@@ -13,8 +13,14 @@ import { z } from "zod";
 import { database } from "../firebaseConfig";
 import { CampaignDataSchema, type CampaignData } from "../schemas/CampaignData";
 
-const campaignsRef: DatabaseReference = ref(database, "campaigns"); // Base ref for campaigns
+const campaignsRef: DatabaseReference = ref(database, "campaigns");
 
+/**
+ * Function to get all campaigns for a specific user
+ * @param ownerId  - The ID of the user whose campaigns we want to fetch
+ * @returns  - An array of CampaignData objects for the specified user
+ * @throws  - Throws an error if the data validation fails
+ */
 export async function getCampaignsForUser(
     ownerId: string
 ): Promise<CampaignData[]> {
@@ -26,11 +32,11 @@ export async function getCampaignsForUser(
         const rawData = snapshot.val();
         console.log(rawData);
 
-        const arraySchema = z.array(CampaignDataSchema);
+        const recordSchema = z.record(z.string(), CampaignDataSchema);
 
-        const validatedData = arraySchema.safeParse(rawData); // Validate the entire array of campaigns
+        const validatedData = recordSchema.safeParse(rawData);
         if (validatedData.success) {
-            return validatedData.data;
+            return Object.values(validatedData.data);
         } else {
             console.error(
                 "Data validation failed for campaigns:",

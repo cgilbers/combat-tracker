@@ -3,6 +3,7 @@ import { AuthProvider } from "./auth/AuthProvider";
 import { Login } from "./components/Login";
 import MenuBar from "./components/MenuBar";
 import { PrivateRoute } from "./components/PrivateRoute";
+import { CampaignCreate } from "./components/campaigns/CampaignCreate";
 import { CampaignList } from "./components/campaigns/CampaignList";
 
 function App() {
@@ -17,6 +18,14 @@ function App() {
                         element={
                             <PrivateRoute>
                                 <CampaignList />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/campaigns/new"
+                        element={
+                            <PrivateRoute>
+                                <CampaignCreate />
                             </PrivateRoute>
                         }
                     />
