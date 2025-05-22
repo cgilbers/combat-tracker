@@ -1,7 +1,7 @@
 import type { User } from "firebase/auth";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useState, type PropsWithChildren } from "react";
-import { auth } from "../firebase";
+import { auth } from "../firebase/firebaseConfig";
 import { AuthContext, type AuthContextType } from "./AuthContext";
 
 /**

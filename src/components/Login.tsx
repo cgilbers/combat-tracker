@@ -1,13 +1,19 @@
 import { Box, Button, Card, Grid, TextField, Typography } from "@mui/material";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 export const Login = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
-    const { login } = useAuth();
+    const { user, login } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (user) {
+            navigate("/campaigns");
+        }
+    }, [user, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -19,7 +25,7 @@ export const Login = () => {
 
         await login(email, password)
             .then(() => {
-                navigate("/");
+                navigate("/campaigns");
             })
             .catch((error: Error) => {
                 console.error("Error: ", error);

@@ -17,6 +17,7 @@ export const MenuBar = () => {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
     const handleLogout = () => {
+        handleClose();
         auth.logout();
     };
 

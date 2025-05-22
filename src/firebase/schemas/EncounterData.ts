@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { EncounterCreatureDataSchema } from "./EncounterCreatureDataSchema";
+import { EncounterCreatureDataSchema } from "./EncounterCreatureData";
 
 // --- Encounter Data Schema ---
 // Data stored at /encounters/{encounterId}
