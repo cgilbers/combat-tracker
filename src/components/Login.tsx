@@ -6,13 +6,18 @@ import { useAuth } from "../auth/useAuth";
 export const Login = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
     const { login } = useAuth();
     const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        console.log("Email: ", email);
+        if (!email || !password) {
+            setError("Please enter your email and password.");
+            return;
+        }
+
         await login(email, password)
             .then((userCredential: { user: User }) => {
                 // Signed in
@@ -22,6 +27,7 @@ export const Login = () => {
             })
             .catch((error: Error) => {
                 console.error("Error: ", error);
+                setError("Could not log in. Please check your credentials.");
             });
     };
     return (
@@ -56,6 +62,11 @@ export const Login = () => {
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Password"
                     />
+                    {error && (
+                        <Typography variant="body2" color="error">
+                            {error}
+                        </Typography>
+                    )}
                     <Button type={"submit"}>Login</Button>
                 </Box>
             </Card>
