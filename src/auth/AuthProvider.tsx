@@ -16,7 +16,6 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     };
 
     auth.onAuthStateChanged((user) => {
-        console.log("User: ", user);
         setUser(user);
     });
 
