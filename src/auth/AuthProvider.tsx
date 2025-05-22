@@ -4,6 +4,11 @@ import { useState, type PropsWithChildren } from "react";
 import { auth } from "../firebase";
 import { AuthContext, type AuthContextType } from "./AuthContext";
 
+/**
+ * AuthProvider is a React component that provides authentication context to its children.
+ * @param children - The children to be rendered inside the AuthProvider
+ * @returns
+ */
 export const AuthProvider = ({ children }: PropsWithChildren) => {
     const [user, setUser] = useState<User | null>(null);
 
