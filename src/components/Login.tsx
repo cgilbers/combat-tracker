@@ -1,5 +1,4 @@
 import { Box, Button, Card, Grid, TextField, Typography } from "@mui/material";
-import type { User } from "firebase/auth";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
@@ -19,10 +18,7 @@ export const Login = () => {
         }
 
         await login(email, password)
-            .then((userCredential: { user: User }) => {
-                // Signed in
-                const user = userCredential.user;
-                console.log("User: ", user);
+            .then(() => {
                 navigate("/");
             })
             .catch((error: Error) => {
