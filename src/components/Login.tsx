@@ -2,7 +2,7 @@ import { Box, Button, Card, TextField, Typography } from "@mui/material";
 import type { User } from "firebase/auth";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../auth/useAuth";
 export const Login = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
