@@ -1,5 +1,4 @@
-import { AccountCircle } from "@mui/icons-material";
-import MenuIcon from "@mui/icons-material/Menu";
+import { AccountCircle, MenuOutlined } from "@mui/icons-material";
 import {
     AppBar,
     Box,
@@ -12,7 +11,10 @@ import {
 import { useState } from "react";
 import { useAuth } from "../auth/useAuth";
 
-export const MenuBar = () => {
+type MenuBarProps = {
+    toggleDrawer: () => void;
+};
+export const MenuBar = ({ toggleDrawer }: MenuBarProps) => {
     const auth = useAuth();
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -34,13 +36,13 @@ export const MenuBar = () => {
             <AppBar position="static">
                 <Toolbar variant="dense">
                     <IconButton
-                        size="large"
+                        onClick={toggleDrawer}
+                        sx={{ mr: 2, display: { sm: "none" } }}
                         edge="start"
                         color="inherit"
                         aria-label="menu"
-                        sx={{ mr: 2 }}
                     >
-                        <MenuIcon />
+                        <MenuOutlined />
                     </IconButton>
                     <Typography
                         variant="h6"
