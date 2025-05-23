@@ -30,8 +30,6 @@ export async function getCampaignsForUser(
 
     if (snapshot.exists()) {
         const rawData = snapshot.val();
-        console.log(rawData);
-
         const recordSchema = z.record(z.string(), CampaignDataSchema);
 
         const validatedData = recordSchema.safeParse(rawData);
@@ -78,7 +76,12 @@ export async function getCampaign(
     }
 }
 
-// Function to create a new campaign
+/**
+ * Function to create a new campaign
+ * @param newCampaignData - The new campaign data to be created
+ * @param ownerId  - The ID of the owner of the campaign
+ * @returns  - The ID of the newly created campaign
+ */
 export async function createCampaign(
     newCampaignData: Omit<CampaignData, "ownerId">,
     ownerId: string

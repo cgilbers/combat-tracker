@@ -11,11 +11,17 @@ import {
     TextField,
     Typography,
 } from "@mui/material";
-import { useFieldArray, useForm } from "react-hook-form";
+import {
+    useFieldArray,
+    useForm,
+    type UseFieldArrayRemove,
+    type UseFormRegister,
+} from "react-hook-form";
 import { z } from "zod";
 import { useAuth } from "../../auth/useAuth";
 import { createCampaign } from "../../firebase/data/campaign";
 import type { CampaignData } from "../../firebase/schemas/CampaignData";
+import { Title } from "../../theme/styles";
 
 const formSchema = z.object({
     name: z.string(),
@@ -39,18 +45,18 @@ export const CampaignCreate = () => {
         handleSubmit,
         control,
         formState: { errors },
-        setValue,
-    } = useForm<{
-        name: string;
-        playersList: PlayerEntry[];
-    }>({
+    } = useForm<FormData>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             playersList: [],
         },
     });
 
-    const { fields, append, remove } = useFieldArray({
+    const {
+        fields: playerList,
+        append,
+        remove,
+    } = useFieldArray({
         control,
         name: "playersList",
     });
@@ -82,9 +88,7 @@ export const CampaignCreate = () => {
 
     return (
         <Container maxWidth="md">
-            <Typography variant="h4" gutterBottom>
-                Create Campaign
-            </Typography>
+            <Title>Create Campaign</Title>
             <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
                 <TextField
                     fullWidth
@@ -97,37 +101,13 @@ export const CampaignCreate = () => {
 
                 <Box mt={3}>
                     <Typography variant="h6">Players</Typography>
-                    {fields.map((field, index) => (
-                        <Paper key={field.id} sx={{ p: 2, mt: 2 }}>
-                            <Grid container spacing={2} alignItems="center">
-                                <Grid size={5}>
-                                    <TextField
-                                        label="Player name"
-                                        fullWidth
-                                        {...register(
-                                            `playersList.${index}.playerName`
-                                        )}
-                                    />
-                                </Grid>
-                                <Grid size={5}>
-                                    <TextField
-                                        label="Character name"
-                                        fullWidth
-                                        {...register(
-                                            `playersList.${index}.characterName`
-                                        )}
-                                    />
-                                </Grid>
-                                <Grid size={2}>
-                                    <IconButton
-                                        color="error"
-                                        onClick={() => remove(index)}
-                                    >
-                                        <DeleteIcon />
-                                    </IconButton>
-                                </Grid>
-                            </Grid>
-                        </Paper>
+                    {playerList.map((field, index) => (
+                        <PlayerItem
+                            id={field.id}
+                            register={register}
+                            index={index}
+                            remove={remove}
+                        />
                     ))}
 
                     <Box mt={2}>
@@ -157,8 +137,36 @@ export const CampaignCreate = () => {
     );
 };
 
-type PlayerEntry = {
+const PlayerItem = (props: {
     id: string;
-    playerName: string;
-    characterName: string;
+    index: number;
+    register: UseFormRegister<FormData>;
+    remove: UseFieldArrayRemove;
+}) => {
+    const { id, register, index, remove } = props;
+    return (
+        <Paper key={id} sx={{ p: 2, mt: 2 }}>
+            <Grid container spacing={2} alignItems="center">
+                <Grid size={5}>
+                    <TextField
+                        label="Player name"
+                        fullWidth
+                        {...register(`playersList.${index}.playerName`)}
+                    />
+                </Grid>
+                <Grid size={5}>
+                    <TextField
+                        label="Character name"
+                        fullWidth
+                        {...register(`playersList.${index}.characterName`)}
+                    />
+                </Grid>
+                <Grid size={2}>
+                    <IconButton color="error" onClick={() => remove(index)}>
+                        <DeleteIcon />
+                    </IconButton>
+                </Grid>
+            </Grid>
+        </Paper>
+    );
 };
