@@ -6,17 +6,30 @@ import {
     Menu,
     MenuItem,
     Toolbar,
-    Typography,
 } from "@mui/material";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
+import { Header } from "../theme/styles";
+
+const navbarTitles: Record<string, string> = {
+    "/campaigns": "Campaigns",
+};
 
 type MenuBarProps = {
     toggleDrawer: () => void;
 };
 export const MenuBar = ({ toggleDrawer }: MenuBarProps) => {
     const auth = useAuth();
+    const location = useLocation();
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const [title, setTitle] = useState<string>("");
+
+    useEffect(() => {
+        const currentPath = location.pathname;
+        const newTitle = navbarTitles[currentPath] || "Combat Tracker";
+        setTitle(newTitle);
+    }, [location.pathname]);
 
     const handleLogout = () => {
         handleClose();
@@ -44,13 +57,9 @@ export const MenuBar = ({ toggleDrawer }: MenuBarProps) => {
                     >
                         <MenuOutlined />
                     </IconButton>
-                    <Typography
-                        variant="h6"
-                        component="div"
-                        sx={{ flexGrow: 1 }}
-                    >
-                        Combat Tracker
-                    </Typography>
+                    <Header sx={{ flexGrow: 1, color: "inherit" }}>
+                        {title}
+                    </Header>
                     {auth.user && (
                         <div>
                             <IconButton

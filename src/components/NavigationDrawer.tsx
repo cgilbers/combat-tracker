@@ -1,5 +1,6 @@
 import {
     Box,
+    Divider,
     Drawer,
     List,
     ListItem,
@@ -9,6 +10,7 @@ import {
 } from "@mui/material";
 import DragonIcon from "../assets/ic_dragon.svg?react";
 import SwordIcon from "../assets/ic_sword.svg?react";
+import { Header } from "../theme/styles";
 
 export const drawerWidth = 240;
 
@@ -34,6 +36,17 @@ export const NavigationDrawer = ({
 
     const drawer = (
         <Box>
+            <Box
+                sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    p: 1,
+                }}
+            >
+                <Header>Campaign Title</Header>
+            </Box>
+            <Divider />
             <List>
                 <ListItem>
                     <ListItemButton>

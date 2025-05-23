@@ -7,7 +7,6 @@ import {
     List,
     ListItem,
     ListItemText,
-    Typography,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
@@ -41,9 +40,6 @@ export const CampaignList = () => {
 
     return (
         <Box>
-            <Typography variant="h4" gutterBottom>
-                Campaign List
-            </Typography>
             {campaigns.length > 0 ? (
                 <List>
                     {campaigns.map((campaign: CampaignData) => (
@@ -62,7 +58,12 @@ export const CampaignList = () => {
             <Fab
                 color="primary"
                 aria-label="add"
-                sx={{ position: "fixed", bottom: 16, right: 16 }}
+                sx={{
+                    position: "fixed",
+                    bottom: 16,
+                    right: 16,
+                    display: { sm: "none" },
+                }}
                 onClick={handleCreateCampaign}
             >
                 <AddIcon />
