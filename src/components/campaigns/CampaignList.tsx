@@ -2,11 +2,13 @@ import AddIcon from "@mui/icons-material/Add";
 import {
     Alert,
     Box,
+    Button,
     Fab,
     Link,
     List,
     ListItem,
     ListItemText,
+    Stack,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
@@ -40,6 +42,21 @@ export const CampaignList = () => {
 
     return (
         <Box>
+            <Stack
+                direction={"row"}
+                sx={{ display: "flex", justifyContent: "end", flex: 1, p: 1 }}
+            >
+                <Button
+                    variant="outlined"
+                    color="primary"
+                    onClick={handleCreateCampaign}
+                    sx={{
+                        display: { xs: "none", sm: "block" },
+                    }}
+                >
+                    New
+                </Button>
+            </Stack>
             {campaigns.length > 0 ? (
                 <List>
                     {campaigns.map((campaign: CampaignData) => (
