@@ -14,6 +14,7 @@ import { Header } from "../theme/styles";
 
 const navbarTitles: Record<string, string> = {
     "/campaigns": "Campaigns",
+    "/campaigns/new": "New Campaign",
 };
 
 type MenuBarProps = {

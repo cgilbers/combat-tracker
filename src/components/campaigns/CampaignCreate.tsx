@@ -21,7 +21,6 @@ import { z } from "zod";
 import { useAuth } from "../../auth/useAuth";
 import { createCampaign } from "../../firebase/data/campaign";
 import type { CampaignData } from "../../firebase/schemas/CampaignData";
-import { Title } from "../../theme/styles";
 
 const formSchema = z.object({
     name: z.string(),
@@ -88,7 +87,6 @@ export const CampaignCreate = () => {
 
     return (
         <Container maxWidth="md">
-            <Title>Create Campaign</Title>
             <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
                 <TextField
                     fullWidth
