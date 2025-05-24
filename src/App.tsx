@@ -4,8 +4,11 @@ import { Layout } from "./Layout";
 import { AuthProvider } from "./auth/AuthProvider";
 import { Login } from "./components/Login";
 import { PrivateRoute } from "./components/PrivateRoute";
-import { CampaignCreate } from "./components/campaigns/CampaignCreate";
-import { CampaignList } from "./components/campaigns/CampaignList";
+import {
+    CampaignCreate,
+    CampaignEdit,
+    CampaignList,
+} from "./components/campaigns";
 import theme from "./theme/theme";
 
 function App() {
@@ -28,6 +31,14 @@ function App() {
                                 element={
                                     <PrivateRoute>
                                         <CampaignCreate />
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path="/campaigns/:id"
+                                element={
+                                    <PrivateRoute>
+                                        <CampaignEdit />
                                     </PrivateRoute>
                                 }
                             />

@@ -23,7 +23,7 @@ const campaignsRef: DatabaseReference = ref(database, "campaigns");
  */
 export async function getCampaignsForUser(
     ownerId: string
-): Promise<CampaignData[]> {
+): Promise<{ data: CampaignData; id: string }[]> {
     const snapshot = await get(
         query(campaignsRef, orderByChild("ownerId"), equalTo(ownerId))
     );
@@ -34,7 +34,10 @@ export async function getCampaignsForUser(
 
         const validatedData = recordSchema.safeParse(rawData);
         if (validatedData.success) {
-            return Object.values(validatedData.data);
+            return Object.entries(validatedData.data).map(([key, value]) => ({
+                data: value,
+                id: key,
+            }));
         } else {
             console.error(
                 "Data validation failed for campaigns:",
@@ -122,7 +125,7 @@ export async function updateCampaign(
 
     try {
         // Optional: Validate the *updates* object if needed, or rely on Firebase rules
-        // CampaignDataSchema.partial().parse(updates); // Use .partial() for partial updates
+        CampaignDataSchema.partial().parse(updates); // Use .partial() for partial updates
 
         console.log(`Updating campaign ${campaignId} with:`, updates);
         await update(campaignItemRef, updates); // Use update for partial updates

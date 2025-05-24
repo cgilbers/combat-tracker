@@ -18,7 +18,9 @@ import type { CampaignData } from "../../firebase/schemas/CampaignData";
 
 export const CampaignList = () => {
     const auth = useAuth();
-    const [campaigns, setCampaigns] = useState<CampaignData[]>([]);
+    const [campaigns, setCampaigns] = useState<
+        { data: CampaignData; id: string }[]
+    >([]);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -59,11 +61,8 @@ export const CampaignList = () => {
             </Stack>
             {campaigns.length > 0 ? (
                 <List>
-                    {campaigns.map((campaign: CampaignData) => (
-                        <CampaignListItem
-                            key={campaign.name}
-                            campaign={campaign}
-                        />
+                    {campaigns.map(({ data, id }) => (
+                        <CampaignListItem key={id} campaign={data} id={id} />
                     ))}
                 </List>
             ) : (
@@ -91,11 +90,17 @@ export const CampaignList = () => {
 
 type CampaignListItemProps = {
     campaign: CampaignData;
+    id: string;
 };
 
-const CampaignListItem = ({ campaign }: CampaignListItemProps) => {
+const CampaignListItem = ({ campaign, id }: CampaignListItemProps) => {
+    const navigate = useNavigate();
     return (
-        <ListItem>
+        <ListItem
+            onClick={() => {
+                navigate(`/campaigns/${id}`);
+            }}
+        >
             <ListItemText primary={campaign.name} />
         </ListItem>
     );

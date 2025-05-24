@@ -8,8 +8,7 @@ import {
     ListItemIcon,
     ListItemText,
 } from "@mui/material";
-import DragonIcon from "../assets/ic_dragon.svg?react";
-import SwordIcon from "../assets/ic_sword.svg?react";
+import { DragonIcon, SwordIcon } from "../assets";
 import { Header } from "../theme/styles";
 
 export const drawerWidth = 240;
