@@ -1,5 +1,5 @@
 import { ThemeProvider } from "@emotion/react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { HashRouter, Link, Route, Routes } from "react-router-dom";
 import { Layout } from "./Layout";
 import { AuthProvider } from "./auth/AuthProvider";
 import { Login } from "./components/Login";
@@ -14,10 +14,20 @@ import theme from "./theme/theme";
 function App() {
     return (
         <ThemeProvider theme={theme}>
-            <BrowserRouter basename="/combat-tracker">
+            <HashRouter basename={"/"}>
                 <AuthProvider>
                     <Routes>
                         <Route path="/" element={<Layout />}>
+                            <Route
+                                path="/"
+                                element={
+                                    <PrivateRoute>
+                                        <Link to="/campaigns">
+                                            Go to Campaigns
+                                        </Link>
+                                    </PrivateRoute>
+                                }
+                            ></Route>
                             <Route
                                 path="campaigns"
                                 element={
@@ -27,7 +37,7 @@ function App() {
                                 }
                             />
                             <Route
-                                path="/campaigns/new"
+                                path="campaigns/new"
                                 element={
                                     <PrivateRoute>
                                         <CampaignCreate />
@@ -35,7 +45,7 @@ function App() {
                                 }
                             />
                             <Route
-                                path="/campaigns/:id"
+                                path="campaigns/:id"
                                 element={
                                     <PrivateRoute>
                                         <CampaignEdit />
@@ -46,7 +56,7 @@ function App() {
                         <Route path="/login" element={<Login />} />
                     </Routes>
                 </AuthProvider>
-            </BrowserRouter>
+            </HashRouter>
         </ThemeProvider>
     );
 }

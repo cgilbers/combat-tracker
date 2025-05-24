@@ -37,7 +37,7 @@ export const Login = () => {
             container
             justifyContent="center"
             alignItems="center"
-            sx={{ height: "calc(100vh - 48px)", backgroundColor: "#f5f5f5" }}
+            sx={{ height: "100vh", backgroundColor: "#f5f5f5" }}
         >
             <Card sx={{ p: 2, width: 250 }}>
                 <Typography variant="h5" gutterBottom>
