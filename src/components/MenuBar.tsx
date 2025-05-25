@@ -7,30 +7,18 @@ import {
     MenuItem,
     Toolbar,
 } from "@mui/material";
-import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useContext, useState } from "react";
 import { useAuth } from "../auth/useAuth";
+import { TitleContext } from "../contexts/TitleContext";
 import { Header } from "../theme/styles";
-
-const navbarTitles: Record<string, string> = {
-    "/campaigns": "Campaigns",
-    "/campaigns/new": "New Campaign",
-};
 
 type MenuBarProps = {
     toggleDrawer: () => void;
 };
 export const MenuBar = ({ toggleDrawer }: MenuBarProps) => {
     const auth = useAuth();
-    const location = useLocation();
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-    const [title, setTitle] = useState<string>("");
-
-    useEffect(() => {
-        const currentPath = location.pathname;
-        const newTitle = navbarTitles[currentPath] || "Combat Tracker";
-        setTitle(newTitle);
-    }, [location.pathname]);
+    const { title } = useContext(TitleContext);
 
     const handleLogout = () => {
         handleClose();

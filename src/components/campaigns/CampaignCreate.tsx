@@ -3,7 +3,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
 import { createCampaign } from "../../firebase/data/campaign";
-import type { CampaignData } from "../../firebase/schemas/CampaignData";
+import type { CampaignData } from "../../firebase/schemas";
+import { useTitleContext } from "../../hooks/useTitleContext";
 import { CampaginForm, type FormData } from "./CampaignForm";
 
 /**
@@ -14,6 +15,7 @@ export const CampaignCreate = () => {
     const { user } = useAuth();
     const [error, setError] = useState("");
     const navigate = useNavigate();
+    useTitleContext({ value: "New Campaign" });
 
     const onSubmit = (data: FormData) => {
         if (!user) return;

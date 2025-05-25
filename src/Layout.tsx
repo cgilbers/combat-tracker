@@ -3,10 +3,12 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import MenuBar from "./components/MenuBar";
 import { drawerWidth, NavigationDrawer } from "./components/NavigationDrawer";
+import { TitleContext } from "./contexts/TitleContext";
 
 export const Layout = () => {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
+    const [title, setTitle] = useState<string>("Combat Tracker");
 
     const handleDrawerToggle = () => {
         if (!isClosing) {
@@ -14,23 +16,25 @@ export const Layout = () => {
         }
     };
     return (
-        <Box sx={{ display: "flex" }}>
-            <NavigationDrawer
-                mobileOpen={mobileOpen}
-                setMobileOpen={setMobileOpen}
-                setIsClosing={setIsClosing}
-            />
-            <Box
-                component="main"
-                sx={{
-                    flexGrow: 1,
-                    width: { sm: `calc(100% - ${drawerWidth}px)` },
-                    ml: { sm: `${drawerWidth}px` },
-                }}
-            >
-                <MenuBar toggleDrawer={handleDrawerToggle} />
-                <Outlet />
+        <TitleContext.Provider value={{ title, setTitle }}>
+            <Box sx={{ display: "flex" }}>
+                <NavigationDrawer
+                    mobileOpen={mobileOpen}
+                    setMobileOpen={setMobileOpen}
+                    setIsClosing={setIsClosing}
+                />
+                <Box
+                    component="main"
+                    sx={{
+                        flexGrow: 1,
+                        width: { sm: `calc(100% - ${drawerWidth}px)` },
+                        ml: { sm: `${drawerWidth}px` },
+                    }}
+                >
+                    <MenuBar toggleDrawer={handleDrawerToggle} />
+                    <Outlet />
+                </Box>
             </Box>
-        </Box>
+        </TitleContext.Provider>
     );
 };

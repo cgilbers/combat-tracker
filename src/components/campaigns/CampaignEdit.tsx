@@ -7,7 +7,8 @@ import {
     getCampaign,
     updateCampaign,
 } from "../../firebase/data/campaign";
-import type { CampaignData } from "../../firebase/schemas/CampaignData";
+import type { CampaignData } from "../../firebase/schemas";
+import { useTitleContext } from "../../hooks/useTitleContext";
 import { CampaginForm, type FormData } from "./CampaignForm";
 
 const defaultValues = {
@@ -24,6 +25,8 @@ export const CampaignEdit = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const [error, setError] = useState("");
+    const [name, setName] = useState("Edit Campaign");
+    useTitleContext({ value: name });
 
     const getDefaultValues = async () => {
         if (!id) {
@@ -34,6 +37,8 @@ export const CampaignEdit = () => {
         if (!data) {
             return defaultValues;
         }
+
+        setName(data.name);
 
         return {
             name: data.name,

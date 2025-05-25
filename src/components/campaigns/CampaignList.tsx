@@ -14,7 +14,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../../auth/useAuth";
 import { getCampaignsForUser } from "../../firebase/data/campaign";
-import type { CampaignData } from "../../firebase/schemas/CampaignData";
+import type { CampaignData } from "../../firebase/schemas";
+import { useTitleContext } from "../../hooks/useTitleContext";
 
 export const CampaignList = () => {
     const auth = useAuth();
@@ -22,6 +23,7 @@ export const CampaignList = () => {
         { data: CampaignData; id: string }[]
     >([]);
     const navigate = useNavigate();
+    useTitleContext({ value: "Campaigns" });
 
     useEffect(() => {
         const fetchCampaigns = async () => {
