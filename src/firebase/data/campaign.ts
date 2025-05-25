@@ -52,7 +52,11 @@ export async function getCampaignsForUser(
     }
 }
 
-// Function to get a single campaign by ID
+/**
+ * Function to get a specific campaign by its ID
+ * @param campaignId - The ID of the campaign to fetch
+ * @returns - The CampaignData object if found and validated, or null if not found or validation fails
+ */
 export async function getCampaign(
     campaignId: string
 ): Promise<CampaignData | null> {
@@ -62,16 +66,13 @@ export async function getCampaign(
     if (snapshot.exists()) {
         const rawData = snapshot.val();
         try {
-            // **Validation on Read:** Validate data coming FROM Firebase
             const validatedData = CampaignDataSchema.parse(rawData);
-            console.log(`Fetched and validated campaign ${campaignId}`);
-            return validatedData; // Return the validated data (type is CampaignData)
+            return validatedData;
         } catch (error) {
             console.error(
                 `Data validation failed for campaign ${campaignId}:`,
                 error
             );
-            // Decide how to handle validation errors - return null, throw, etc.
             return null;
         }
     } else {
@@ -117,7 +118,12 @@ export async function createCampaign(
     }
 }
 
-// Function to update a campaign (partial update)
+/**
+ * Updates a specific campaign with partial data.
+ * This function allows updating only certain fields of the campaign.
+ * @param campaignId The ID of the campaign to update.
+ * @param updates The partial updates to apply to the campaign.
+ */
 export async function updateCampaign(
     campaignId: string,
     updates: Partial<CampaignData>
@@ -150,13 +156,9 @@ export async function deleteCampaign(
     userId: string
 ): Promise<void> {
     if (!campaignId) {
-        console.error("deleteCampaign requires a campaignId.");
         throw new Error("Campaign ID is required for deletion.");
     }
     if (!userId) {
-        console.error(
-            "deleteCampaign requires a userId (authenticated user's ID)."
-        );
         throw new Error("Authenticated user ID is required for deletion.");
     }
 
@@ -172,23 +174,10 @@ export async function deleteCampaign(
         );
         const encountersSnapshot = await get(campaignEncountersQuery);
         if (encountersSnapshot.exists()) {
-            console.log(
-                `Found ${encountersSnapshot.size} encounters linked to campaign ${campaignId}. Adding them to deletion list.`
-            );
-            // Iterate through the child snapshots obtained from the query
             encountersSnapshot.forEach((childSnapshot: DataSnapshot) => {
-                const encounterId = childSnapshot.key; // Get the Firebase key (ID) of the encounter
+                const encounterId = childSnapshot.key;
                 if (encounterId) {
-                    // Add the encounter's path to the updates object with a value of null
                     updates[`/encounters/${encounterId}`] = null;
-                    console.log(
-                        `- Added encounter path '/encounters/${encounterId}' to deletion list.`
-                    );
-                } else {
-                    console.warn(
-                        "Encounter snapshot with null key found, skipping:",
-                        childSnapshot.val()
-                    );
                 }
             });
         }
