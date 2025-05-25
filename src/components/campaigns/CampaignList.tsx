@@ -1,3 +1,4 @@
+import { Star, StarBorder } from "@mui/icons-material";
 import AddIcon from "@mui/icons-material/Add";
 import {
     Alert,
@@ -7,6 +8,8 @@ import {
     Link,
     List,
     ListItem,
+    ListItemButton,
+    ListItemIcon,
     ListItemText,
     Stack,
 } from "@mui/material";
@@ -15,6 +18,7 @@ import { useNavigate } from "react-router";
 import { useAuth } from "../../auth/useAuth";
 import { getCampaignsForUser } from "../../firebase/data/campaign";
 import type { CampaignData } from "../../firebase/schemas";
+import { useCampaign } from "../../hooks/useCampaign";
 import { useTitleContext } from "../../hooks/useTitleContext";
 
 export const CampaignList = () => {
@@ -97,13 +101,27 @@ type CampaignListItemProps = {
 
 const CampaignListItem = ({ campaign, id }: CampaignListItemProps) => {
     const navigate = useNavigate();
+    const { id: currentId, setCampaign } = useCampaign();
     return (
-        <ListItem
-            onClick={() => {
-                navigate(`/campaigns/${id}`);
-            }}
-        >
-            <ListItemText primary={campaign.name} />
+        <ListItem disablePadding>
+            <ListItemButton
+                onClick={() => {
+                    navigate(`/campaigns/${id}`);
+                }}
+            >
+                <ListItemText primary={campaign.name} />
+                <ListItemIcon
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setCampaign(campaign, id);
+                    }}
+                    sx={{
+                        color: "secondary.main",
+                    }}
+                >
+                    {id === currentId ? <Star /> : <StarBorder />}
+                </ListItemIcon>
+            </ListItemButton>
         </ListItem>
     );
 };

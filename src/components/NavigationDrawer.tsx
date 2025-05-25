@@ -8,7 +8,9 @@ import {
     ListItemIcon,
     ListItemText,
 } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import { DragonIcon, SwordIcon } from "../assets";
+import { useCampaign } from "../hooks/useCampaign";
 import { Header } from "../theme/styles";
 
 export const drawerWidth = 240;
@@ -24,6 +26,8 @@ export const NavigationDrawer = ({
     setMobileOpen,
     setIsClosing,
 }: NavigationDrawerProps) => {
+    const { data } = useCampaign();
+    const navigate = useNavigate();
     const handleDrawerClose = () => {
         setIsClosing(true);
         setMobileOpen(false);
@@ -43,11 +47,18 @@ export const NavigationDrawer = ({
                     p: 1,
                 }}
             >
-                <Header>Campaign Title</Header>
+                <Header
+                    onClick={() => {
+                        navigate("/campaigns");
+                    }}
+                    sx={{ cursor: "pointer" }}
+                >
+                    {data?.name ?? "No Campaign Selected"}
+                </Header>
             </Box>
             <Divider />
             <List>
-                <ListItem>
+                <ListItem disablePadding>
                     <ListItemButton>
                         <ListItemIcon>
                             <SwordIcon />
@@ -55,7 +66,7 @@ export const NavigationDrawer = ({
                         <ListItemText primary="Encounters" />
                     </ListItemButton>
                 </ListItem>
-                <ListItem>
+                <ListItem disablePadding>
                     <ListItemButton>
                         <ListItemIcon>
                             <DragonIcon />
