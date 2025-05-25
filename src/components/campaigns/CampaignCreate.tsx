@@ -1,3 +1,6 @@
+import { Container, Stack, Typography } from "@mui/material";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
 import { createCampaign } from "../../firebase/data/campaign";
 import type { CampaignData } from "../../firebase/schemas/CampaignData";
@@ -9,6 +12,8 @@ import { CampaginForm, type FormData } from "./CampaignForm";
  */
 export const CampaignCreate = () => {
     const { user } = useAuth();
+    const [error, setError] = useState("");
+    const navigate = useNavigate();
 
     const onSubmit = (data: FormData) => {
         if (!user) return;
@@ -31,13 +36,28 @@ export const CampaignCreate = () => {
             createdAt: Date.now(),
         };
 
-        createCampaign(campaignData, user.uid);
+        createCampaign(campaignData, user.uid)
+            .then((id) => {
+                navigate(`/campaigns/${id}`);
+            })
+            .catch(() => {
+                setError("Failed to create campaign. Please try again.");
+            });
     };
 
     return (
-        <CampaginForm
-            onSubmit={onSubmit}
-            defaultValues={{ name: "", playersList: [] }}
-        />
+        <Stack gap={2}>
+            <CampaginForm
+                onSubmit={onSubmit}
+                defaultValues={{ name: "", playersList: [] }}
+            />
+            <Container maxWidth="md">
+                {error && (
+                    <Typography variant="body2" color="error">
+                        {error}
+                    </Typography>
+                )}
+            </Container>
+        </Stack>
     );
 };

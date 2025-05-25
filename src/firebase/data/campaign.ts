@@ -1,4 +1,5 @@
 import {
+    DataSnapshot,
     equalTo,
     get,
     orderByChild,
@@ -132,6 +133,69 @@ export async function updateCampaign(
         console.log(`Campaign ${campaignId} updated successfully`);
     } catch (error) {
         console.error(`Failed to update campaign ${campaignId}:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Deletes a specific campaign and all associated encounters atomically.
+ * Requires the authenticated user to be the owner of the campaign.
+ *
+ * @param campaignId The ID of the campaign to delete.
+ * @param userId The ID of the currently authenticated user (used for security rule checks).
+ * @returns A Promise that resolves when the delete operation is complete.
+ */
+export async function deleteCampaign(
+    campaignId: string,
+    userId: string
+): Promise<void> {
+    if (!campaignId) {
+        console.error("deleteCampaign requires a campaignId.");
+        throw new Error("Campaign ID is required for deletion.");
+    }
+    if (!userId) {
+        console.error(
+            "deleteCampaign requires a userId (authenticated user's ID)."
+        );
+        throw new Error("Authenticated user ID is required for deletion.");
+    }
+
+    try {
+        const updates: { [key: string]: null } = {}; // Using 'null' as the value at a path means delete that path
+        // Add the path to the campaign itself to the updates object.
+        // Setting the value to null will delete the campaign node.
+        updates[`/campaigns/${campaignId}`] = null;
+        const campaignEncountersQuery = query(
+            ref(database, "encounters"),
+            orderByChild("campaignId"),
+            equalTo(campaignId)
+        );
+        const encountersSnapshot = await get(campaignEncountersQuery);
+        if (encountersSnapshot.exists()) {
+            console.log(
+                `Found ${encountersSnapshot.size} encounters linked to campaign ${campaignId}. Adding them to deletion list.`
+            );
+            // Iterate through the child snapshots obtained from the query
+            encountersSnapshot.forEach((childSnapshot: DataSnapshot) => {
+                const encounterId = childSnapshot.key; // Get the Firebase key (ID) of the encounter
+                if (encounterId) {
+                    // Add the encounter's path to the updates object with a value of null
+                    updates[`/encounters/${encounterId}`] = null;
+                    console.log(
+                        `- Added encounter path '/encounters/${encounterId}' to deletion list.`
+                    );
+                } else {
+                    console.warn(
+                        "Encounter snapshot with null key found, skipping:",
+                        childSnapshot.val()
+                    );
+                }
+            });
+        }
+
+        await update(ref(database, "/"), updates);
+    } catch (error) {
+        console.error(`Failed to delete campaign ${campaignId}:`, error);
         throw error;
     }
 }
