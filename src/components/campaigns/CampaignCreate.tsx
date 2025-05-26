@@ -5,7 +5,7 @@ import { useAuth } from "../../auth/useAuth";
 import { createCampaign } from "../../firebase/data/campaign";
 import type { CampaignData } from "../../firebase/schemas";
 import { useTitleContext } from "../../hooks/useTitleContext";
-import { CampaginForm, type FormData } from "./CampaignForm";
+import { CampaignForm, type FormData } from "./CampaignForm";
 
 /**
  *  CampaignCreate Component
@@ -49,7 +49,7 @@ export const CampaignCreate = () => {
 
     return (
         <Stack gap={2}>
-            <CampaginForm
+            <CampaignForm
                 onSubmit={onSubmit}
                 defaultValues={{ name: "", playersList: [] }}
             />

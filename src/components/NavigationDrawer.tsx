@@ -7,11 +7,12 @@ import {
     ListItemButton,
     ListItemIcon,
     ListItemText,
+    Stack,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { DragonIcon, SwordIcon } from "../assets";
 import { useCampaign } from "../hooks/useCampaign";
-import { Header } from "../theme/styles";
+import { Header, Label } from "../theme/styles";
 
 export const drawerWidth = 240;
 
@@ -39,23 +40,21 @@ export const NavigationDrawer = ({
 
     const drawer = (
         <Box>
-            <Box
+            <Stack
+                onClick={() => {
+                    navigate("/campaigns");
+                }}
                 sx={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     p: 1,
+                    cursor: "pointer",
                 }}
             >
-                <Header
-                    onClick={() => {
-                        navigate("/campaigns");
-                    }}
-                    sx={{ cursor: "pointer" }}
-                >
-                    {data?.name ?? "No Campaign Selected"}
-                </Header>
-            </Box>
+                <Label>Campaign:</Label>
+                <Header>{data?.name ?? "No Campaign Selected"}</Header>
+            </Stack>
             <Divider />
             <List>
                 <ListItem disablePadding>

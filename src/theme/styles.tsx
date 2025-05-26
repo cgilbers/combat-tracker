@@ -10,3 +10,9 @@ export const Header = styled(Typography)(({ theme }) => ({
 export const Title = styled(Header)(({ theme }) => ({
     marginBottom: theme.spacing(2),
 }));
+
+export const Label = styled(Typography)(({ theme }) => ({
+    fontSize: "0.8rem",
+    fontFamily: theme.typography.body1.fontFamily,
+    color: theme.palette.text.secondary,
+}));

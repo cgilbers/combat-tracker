@@ -9,7 +9,7 @@ import {
 } from "../../firebase/data/campaign";
 import type { CampaignData } from "../../firebase/schemas";
 import { useTitleContext } from "../../hooks/useTitleContext";
-import { CampaginForm, type FormData } from "./CampaignForm";
+import { CampaignForm, type FormData } from "./CampaignForm";
 
 const defaultValues = {
     name: "",
@@ -91,7 +91,7 @@ export const CampaignEdit = () => {
 
     return (
         <Stack gap={2}>
-            <CampaginForm
+            <CampaignForm
                 onSubmit={onSubmit}
                 defaultValues={getDefaultValues}
             />

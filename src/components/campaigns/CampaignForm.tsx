@@ -5,6 +5,7 @@ import {
     Box,
     Button,
     Container,
+    FormHelperText,
     Grid,
     IconButton,
     Paper,
@@ -14,19 +15,20 @@ import {
 import {
     useFieldArray,
     useForm,
+    type FieldErrors,
     type UseFieldArrayRemove,
     type UseFormRegister,
 } from "react-hook-form";
 import { z } from "zod";
 
 const formSchema = z.object({
-    name: z.string(),
+    name: z.string().min(1, "Name is required"),
     playersList: z
         .array(
             z.object({
                 id: z.string(),
-                playerName: z.string(),
-                characterName: z.string(),
+                playerName: z.string().min(1, "Player name is required"),
+                characterName: z.string().min(1, "Character name is required"),
             })
         )
         .min(1, "Please add at least one player"),
@@ -39,7 +41,7 @@ type CampaignFormProps = {
     defaultValues: FormData | (() => Promise<FormData>);
 };
 
-export const CampaginForm = ({
+export const CampaignForm = ({
     onSubmit,
     defaultValues,
 }: CampaignFormProps) => {
@@ -83,8 +85,12 @@ export const CampaginForm = ({
                             register={register}
                             index={index}
                             remove={remove}
+                            errors={errors}
                         />
                     ))}
+                    <FormHelperText error={!!errors.playersList}>
+                        {errors.playersList?.message}
+                    </FormHelperText>
 
                     <Box mt={2}>
                         <Button
@@ -116,10 +122,11 @@ export const CampaginForm = ({
 const PlayerItem = (props: {
     id: string;
     index: number;
+    errors: FieldErrors<FormData>;
     register: UseFormRegister<FormData>;
     remove: UseFieldArrayRemove;
 }) => {
-    const { id, register, index, remove } = props;
+    const { id, register, index, remove, errors } = props;
     return (
         <Paper key={id} sx={{ p: 2, mt: 2 }}>
             <Grid container spacing={2} alignItems="center">
@@ -143,6 +150,10 @@ const PlayerItem = (props: {
                     </IconButton>
                 </Grid>
             </Grid>
+            <FormHelperText error={!!errors.playersList?.[index]}>
+                {errors.playersList?.[index]?.playerName?.message ||
+                    errors.playersList?.[index]?.characterName?.message}
+            </FormHelperText>
         </Paper>
     );
 };
