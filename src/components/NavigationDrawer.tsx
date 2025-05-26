@@ -56,7 +56,7 @@ export const NavigationDrawer = ({
                 <Header>{data?.name ?? "No Campaign Selected"}</Header>
             </Stack>
             <Divider />
-            <List>
+            <List sx={{ p: 0 }}>
                 <ListItem disablePadding>
                     <ListItemButton>
                         <ListItemIcon>
