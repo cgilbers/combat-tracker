@@ -1,10 +1,10 @@
 import { CircularProgress } from "@mui/material";
 import { getAuth } from "firebase/auth";
-import { useEffect, useState, type PropsWithChildren } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 
-export const PrivateRoute = ({ children }: PropsWithChildren) => {
+export const PrivateRoute = () => {
     const [authStateReady, setAuthStateReady] = useState(false);
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -26,5 +26,5 @@ export const PrivateRoute = ({ children }: PropsWithChildren) => {
         }
     }, [user, navigate, authStateReady]);
 
-    return authStateReady && user ? children : <CircularProgress />;
+    return authStateReady && user ? <Outlet /> : <CircularProgress />;
 };

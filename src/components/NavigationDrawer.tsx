@@ -58,7 +58,7 @@ export const NavigationDrawer = ({
             <Divider />
             <List sx={{ p: 0 }}>
                 <ListItem disablePadding>
-                    <ListItemButton>
+                    <ListItemButton onClick={() => navigate("/encounters")}>
                         <ListItemIcon>
                             <SwordIcon />
                         </ListItemIcon>
@@ -66,7 +66,7 @@ export const NavigationDrawer = ({
                     </ListItemButton>
                 </ListItem>
                 <ListItem disablePadding>
-                    <ListItemButton>
+                    <ListItemButton onClick={() => navigate("/creatures")}>
                         <ListItemIcon>
                             <DragonIcon />
                         </ListItemIcon>

@@ -16,41 +16,68 @@ import type { CampaignData } from "./firebase/schemas";
 import theme from "./theme/theme";
 
 const router = createHashRouter([
+    { path: "login", element: <Login /> },
     {
         path: "/",
         element: <Layout />,
         children: [
             {
-                index: true,
-                element: <Home />,
-            },
-            { path: "login", element: <Login /> },
-            {
-                path: "campaigns/*",
+                element: <PrivateRoute />,
                 children: [
                     {
                         index: true,
-                        element: (
-                            <PrivateRoute>
-                                <CampaignList />
-                            </PrivateRoute>
-                        ),
+                        element: <Home />,
                     },
                     {
-                        path: "campaigns/new",
-                        element: (
-                            <PrivateRoute>
-                                <CampaignCreate />
-                            </PrivateRoute>
-                        ),
+                        path: "campaigns/*",
+                        children: [
+                            {
+                                index: true,
+                                element: <CampaignList />,
+                            },
+                            {
+                                path: "new",
+                                element: <CampaignCreate />,
+                            },
+                            {
+                                path: ":id",
+                                element: <CampaignEdit />,
+                            },
+                        ],
                     },
                     {
-                        path: "campaigns/:id",
-                        element: (
-                            <PrivateRoute>
-                                <CampaignEdit />
-                            </PrivateRoute>
-                        ),
+                        path: "encounters/*",
+                        children: [
+                            {
+                                index: true,
+                                element: <div>Encounters List</div>,
+                            },
+                            {
+                                path: "new",
+                                element: <div>Create Encounter</div>,
+                            },
+                            {
+                                path: ":id",
+                                element: <div>Encounter Details</div>,
+                            },
+                        ],
+                    },
+                    {
+                        path: "creatures/*",
+                        children: [
+                            {
+                                index: true,
+                                element: <div>Creature List</div>,
+                            },
+                            {
+                                path: "new",
+                                element: <div>Create Creature</div>,
+                            },
+                            {
+                                path: ":id",
+                                element: <div>Creature Details</div>,
+                            },
+                        ],
                     },
                 ],
             },
