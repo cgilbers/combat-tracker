@@ -63,7 +63,7 @@ export const MonsterSchema = z
         challenge_rating: z.string(),
         cr: z.number(),
         actions: z.array(ActionSchema),
-        special_abilities: z.array(AbilitySchema).optional(),
+        special_abilities: z.array(AbilitySchema).nullish(),
         legendary_actions: z.array(ActionSchema).nullish(),
         legendary_desc: z.string().nullable(),
         bonus_actions: z.array(ActionSchema).nullish(),

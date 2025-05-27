@@ -5,12 +5,39 @@ import {
     IconButton,
     Menu,
     MenuItem,
+    Stack,
     Toolbar,
+    useTheme,
 } from "@mui/material";
 import { useContext, useState } from "react";
+import { NavLink, type NavLinkProps } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { TitleContext } from "../contexts/TitleContext";
 import { Header } from "../theme/styles";
+
+const MenuButton = (props: NavLinkProps) => {
+    const theme = useTheme();
+    return (
+        <Box
+            sx={{
+                display: { xs: "none", sm: "block" },
+                p: 1,
+                fontFamily: theme.typography.fontFamily,
+            }}
+        >
+            <NavLink
+                {...props}
+                style={({ isActive }) => ({
+                    textDecoration: "none",
+                    color: isActive
+                        ? theme.palette.secondary.main
+                        : theme.palette.primary.contrastText,
+                    alignItems: "center",
+                })}
+            />
+        </Box>
+    );
+};
 
 type MenuBarProps = {
     toggleDrawer: () => void;
@@ -35,22 +62,22 @@ export const MenuBar = ({ toggleDrawer }: MenuBarProps) => {
 
     return (
         <Box sx={{ flexGrow: 1 }}>
-            <AppBar position="static">
+            <AppBar
+                position="fixed"
+                sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}
+            >
                 <Toolbar variant="dense">
-                    <IconButton
-                        onClick={toggleDrawer}
-                        sx={{ mr: 2, display: { sm: "none" } }}
-                        edge="start"
-                        color="inherit"
-                        aria-label="menu"
-                    >
-                        <MenuOutlined />
-                    </IconButton>
                     <Header sx={{ flexGrow: 1, color: "inherit" }}>
                         {title}
                     </Header>
                     {auth.user && (
-                        <div>
+                        <Stack
+                            direction={"row"}
+                            sx={{ alignItems: "center", display: "flex" }}
+                        >
+                            <MenuButton to="/campaigns">Campaigns</MenuButton>
+                            <MenuButton to="/encounters">Encounters</MenuButton>
+                            <MenuButton to="/creatures">Creatures</MenuButton>
                             <IconButton
                                 size="large"
                                 aria-label="account of current user"
@@ -80,8 +107,17 @@ export const MenuBar = ({ toggleDrawer }: MenuBarProps) => {
                                     Logout
                                 </MenuItem>
                             </Menu>
-                        </div>
+                        </Stack>
                     )}
+                    <IconButton
+                        onClick={toggleDrawer}
+                        sx={{ ml: 1, display: { sm: "none" } }}
+                        edge="start"
+                        color="inherit"
+                        aria-label="menu"
+                    >
+                        <MenuOutlined />
+                    </IconButton>
                 </Toolbar>
             </AppBar>
         </Box>

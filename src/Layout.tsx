@@ -1,8 +1,8 @@
-import { Box } from "@mui/material";
+import { Box, Stack } from "@mui/material";
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import MenuBar from "./components/MenuBar";
-import { drawerWidth, NavigationDrawer } from "./components/NavigationDrawer";
+import { NavigationDrawer } from "./components/NavigationDrawer";
 import { TitleContext } from "./contexts/TitleContext";
 
 export const Layout = () => {
@@ -17,7 +17,8 @@ export const Layout = () => {
     };
     return (
         <TitleContext.Provider value={{ title, setTitle }}>
-            <Box sx={{ display: "flex" }}>
+            <Stack sx={{ display: "flex" }}>
+                <MenuBar toggleDrawer={handleDrawerToggle} />
                 <NavigationDrawer
                     mobileOpen={mobileOpen}
                     setMobileOpen={setMobileOpen}
@@ -27,14 +28,13 @@ export const Layout = () => {
                     component="main"
                     sx={{
                         flexGrow: 1,
-                        width: { sm: `calc(100% - ${drawerWidth}px)` },
-                        ml: { sm: `${drawerWidth}px` },
+                        // width: { sm: `calc(100% - ${drawerWidth}px)` },
+                        // ml: { sm: `${drawerWidth}px` },
                     }}
                 >
-                    <MenuBar toggleDrawer={handleDrawerToggle} />
                     <Outlet />
                 </Box>
-            </Box>
+            </Stack>
         </TitleContext.Provider>
     );
 };

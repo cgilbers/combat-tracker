@@ -39,7 +39,7 @@ export const NavigationDrawer = ({
     };
 
     const drawer = (
-        <Box>
+        <Box sx={{ mt: "48px" }}>
             <Stack
                 onClick={() => {
                     navigate("/campaigns");
@@ -78,9 +78,14 @@ export const NavigationDrawer = ({
     );
 
     return (
-        <Box>
+        <Box
+            sx={{
+                mt: "48px",
+            }}
+        >
             <Drawer
                 variant="temporary"
+                anchor="right"
                 open={mobileOpen}
                 onTransitionEnd={handleDrawerTransitionEnd}
                 onClose={handleDrawerClose}
@@ -99,8 +104,9 @@ export const NavigationDrawer = ({
             >
                 {drawer}
             </Drawer>
-            <Drawer
+            {/* <Drawer
                 variant="permanent"
+                anchor="right"
                 sx={{
                     display: { xs: "none", sm: "block" },
                     "& .MuiDrawer-paper": {
@@ -111,7 +117,7 @@ export const NavigationDrawer = ({
                 open
             >
                 {drawer}
-            </Drawer>
+            </Drawer> */}
         </Box>
     );
 };
