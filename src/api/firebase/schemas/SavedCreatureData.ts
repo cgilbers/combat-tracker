@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // --- Saved Creature Data Schema ---
 // Data stored at /savedCreatures/{savedCreatureId}
-const AbilitiesSchema = z.object({
+export const AbilitiesSchema = z.object({
     strength: z.number().int(),
     dexterity: z.number().int(),
     constitution: z.number().int(),

@@ -12,6 +12,7 @@ import {
     CampaignEdit,
     CampaignList,
 } from "./components/campaigns";
+import { CreatureCreate } from "./components/creatures/CreatureCreate.tsx";
 import { CampaignContext } from "./contexts/CampaignContext";
 import theme from "./theme/theme";
 
@@ -71,7 +72,7 @@ const router = createHashRouter([
                             },
                             {
                                 path: "new",
-                                element: <div>Create Creature</div>,
+                                element: <CreatureCreate />,
                             },
                             {
                                 path: ":id",
