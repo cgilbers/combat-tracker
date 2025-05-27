@@ -1,13 +1,13 @@
 import { Button, Container, Stack, Typography } from "@mui/material";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useAuth } from "../../auth/useAuth";
 import {
     deleteCampaign,
     getCampaign,
     updateCampaign,
-} from "../../firebase/data/campaign";
-import type { CampaignData } from "../../firebase/schemas";
+} from "../../api/firebase/data/campaign";
+import type { CampaignData } from "../../api/firebase/schemas";
+import { useAuth } from "../../auth/useAuth";
 import { useTitleContext } from "../../hooks/useTitleContext";
 import { CampaignForm, type FormData } from "./CampaignForm";
 

@@ -1,9 +1,9 @@
 import { Container, Stack, Typography } from "@mui/material";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { createCampaign } from "../../api/firebase/data/campaign";
+import type { CampaignData } from "../../api/firebase/schemas";
 import { useAuth } from "../../auth/useAuth";
-import { createCampaign } from "../../firebase/data/campaign";
-import type { CampaignData } from "../../firebase/schemas";
 import { useTitleContext } from "../../hooks/useTitleContext";
 import { CampaignForm, type FormData } from "./CampaignForm";
 

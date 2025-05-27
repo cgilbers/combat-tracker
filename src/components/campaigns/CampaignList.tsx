@@ -15,9 +15,9 @@ import {
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
+import { getCampaignsForUser } from "../../api/firebase/data/campaign";
+import type { CampaignData } from "../../api/firebase/schemas";
 import { useAuth } from "../../auth/useAuth";
-import { getCampaignsForUser } from "../../firebase/data/campaign";
-import type { CampaignData } from "../../firebase/schemas";
 import { useCampaign } from "../../hooks/useCampaign";
 import { useTitleContext } from "../../hooks/useTitleContext";
 

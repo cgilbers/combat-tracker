@@ -2,6 +2,7 @@ import { ThemeProvider } from "@emotion/react";
 import { useState } from "react";
 import { createHashRouter, RouterProvider } from "react-router-dom";
 import { Layout } from "./Layout";
+import type { CampaignData } from "./api/firebase/schemas/index.ts";
 import { AuthProvider } from "./auth/AuthProvider";
 import { Home } from "./components/Home";
 import { Login } from "./components/Login";
@@ -12,7 +13,6 @@ import {
     CampaignList,
 } from "./components/campaigns";
 import { CampaignContext } from "./contexts/CampaignContext";
-import type { CampaignData } from "./firebase/schemas";
 import theme from "./theme/theme";
 
 const router = createHashRouter([

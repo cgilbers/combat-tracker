@@ -1,5 +1,5 @@
 import { createContext } from "react";
-import type { CampaignData } from "../firebase/schemas";
+import type { CampaignData } from "../api/firebase/schemas";
 
 type CampaignContextType = {
     id: string | null;
