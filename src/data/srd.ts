@@ -263,7 +263,12 @@ export function readCachedSrdCreatures(): Creature[] {
     return parsed.creatures.filter((creature): creature is Creature => {
       if (!creature || typeof creature !== 'object') return false
       const candidate = creature as Record<string, unknown>
-      return typeof candidate.id === 'string' && typeof candidate.name === 'string'
+      return (
+        typeof candidate.id === 'string' &&
+        candidate.id.startsWith('srd:') &&
+        candidate.source === 'srd' &&
+        typeof candidate.name === 'string'
+      )
     }) as Creature[]
   } catch {
     return []
@@ -319,7 +324,7 @@ function saveCachedSrdCatalog(creatures: SrdMonsterSummary[]): void {
 export class DnD5eApiProvider implements SrdProvider {
   readonly baseUrl: string
 
-  constructor(baseUrl = 'https://www.dnd5eapi.co/api') {
+  constructor(baseUrl = 'https://www.dnd5eapi.co/api/2014') {
     this.baseUrl = baseUrl
   }
 

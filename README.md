@@ -13,7 +13,8 @@ Combat Tracker is a local-first D&D 5e encounter manager for Dungeon Masters. It
 
 The app uses the public D&D 5e API as its SRD provider and normalizes the returned creature data into the app's local creature model.
 
-- Source: https://www.dnd5eapi.co/api
+- API endpoint: https://www.dnd5eapi.co/api/2014
+- Active API repository: https://github.com/5e-bits/5e-srd-api
 - Content is limited to the System Reference Document (SRD), to avoid bundling non-SRD content.
 - Imported SRD creatures are stored locally and marked with the `source: 'srd'` value so they are distinguishable from custom creatures.
 

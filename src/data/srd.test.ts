@@ -1,6 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   SRD_CACHE_KEY,
+  DnD5eApiProvider,
   importSrdCreature,
   loadSrdCatalog,
   normalizeSrdCreature,
@@ -36,6 +37,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.unstubAllGlobals()
   memoryStorage.clear()
 })
 
@@ -102,6 +104,20 @@ describe('SRD creature import', () => {
 
     expect(readCachedSrdCreatures()).toEqual([creature])
     expect(globalThis.localStorage.getItem(SRD_CACHE_KEY)).toContain('"source":"srd"')
+  })
+
+  it('excludes non-SRD records from the SRD cache', () => {
+    globalThis.localStorage.setItem(
+      SRD_CACHE_KEY,
+      JSON.stringify({
+        creatures: [
+          { ...normalizeSrdCreature(sampleApiCreature), source: 'custom' },
+          { ...normalizeSrdCreature(sampleApiCreature), id: 'custom:goblin' },
+        ],
+      }),
+    )
+
+    expect(readCachedSrdCreatures()).toEqual([])
   })
 
   it('lists catalog summaries without downloading every stat block', async () => {
@@ -186,5 +202,29 @@ describe('SRD creature import', () => {
     })
 
     expect(result).toEqual({ status: 'cache', creature })
+  })
+
+  it('requests resources through the current versioned production API route', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          results: [{ index: 'goblin', name: 'Goblin' }],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => sampleApiCreature,
+      })
+    vi.stubGlobal('fetch', fetchMock)
+    const provider = new DnD5eApiProvider()
+
+    await provider.listMonsters()
+    await provider.fetchMonster('goblin')
+
+    expect(fetchMock.mock.calls).toEqual([
+      ['https://www.dnd5eapi.co/api/2014/monsters'],
+      ['https://www.dnd5eapi.co/api/2014/monsters/goblin'],
+    ])
   })
 })
