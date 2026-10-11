@@ -30,6 +30,10 @@ export async function saveParty(party: Party): Promise<void> {
   await database.parties.put(party)
 }
 
+export async function deleteParty(partyId: string): Promise<void> {
+  await database.parties.delete(partyId)
+}
+
 export async function saveCreature(creature: Creature): Promise<void> {
   await database.creatures.put(creature)
 }
@@ -53,17 +57,14 @@ export async function loadAppData(): Promise<{
 }
 
 export async function saveAppData(data: {
-  party: Party
   creatures: Creature[]
   encounter: Encounter | null
 }): Promise<void> {
   await database.transaction(
     'rw',
-    database.parties,
     database.creatures,
     database.encounters,
     async () => {
-      await database.parties.put(data.party)
       await database.creatures.clear()
       await database.creatures.bulkPut(data.creatures)
       await database.encounters.clear()

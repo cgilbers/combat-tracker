@@ -1,4 +1,4 @@
-import type { CombatantState, Encounter } from '../domain/types'
+import type { CombatantState, Encounter, Party } from '../domain/types'
 
 export function sortCombatants(combatants: CombatantState[]): CombatantState[] {
   return [...combatants].sort((first, second) => {
@@ -8,14 +8,37 @@ export function sortCombatants(combatants: CombatantState[]): CombatantState[] {
   })
 }
 
-export function startEncounter(encounter: Encounter): Encounter {
-  const sortedCombatants = sortCombatants(encounter.combatants)
+export function startEncounter(
+  encounter: Encounter,
+  party: Party,
+  pcInitiatives: Record<string, number>,
+  createId: () => string,
+): Encounter {
+  const characterWithoutInitiative = party.members.find(
+    (member) => !Number.isFinite(pcInitiatives[member.id]),
+  )
+  if (characterWithoutInitiative) {
+    throw new Error(`Initiative is required for ${characterWithoutInitiative.name}.`)
+  }
+
+  const pcCombatants: CombatantState[] = party.members.map((member) => ({
+    id: createId(),
+    type: 'pc',
+    refId: member.id,
+    name: member.name,
+    initiative: pcInitiatives[member.id] ?? null,
+  }))
+  const sortedCombatants = sortCombatants([
+    ...encounter.combatants.filter((combatant) => combatant.type !== 'pc'),
+    ...pcCombatants,
+  ])
   const firstReadyIndex = sortedCombatants.findIndex(
     (combatant) => !combatant.isDefeated,
   )
 
   return {
     ...encounter,
+    partyId: party.id,
     combatants: sortedCombatants,
     currentTurnIndex: Math.max(firstReadyIndex, 0),
     round: 1,

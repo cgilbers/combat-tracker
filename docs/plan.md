@@ -9,6 +9,7 @@ The app is DM-first and local-first. It does not require accounts, a backend, cl
 ## Agreed Product Decisions
 
 - PCs have names and notes in the party; the app tracks their encounter initiative, but not their HP or AC. Those remain at the table.
+- An unstarted encounter has no party association and contains no PCs. At the moment combat begins, the DM chooses a party and enters PC initiative; the party members are copied into the started encounter. Deleting or editing the source party does not alter an already-started encounter.
 - Creatures have app-managed combat statistics and HP. Creature initiative can be rolled automatically, with group initiative supported; the DM can edit results before combat starts.
 - The combat rules engine is pure TypeScript, independent of React and persistence.
 - IndexedDB is the durable local source of truth. The app remains useful offline; SRD data fetched while online is cached locally.
@@ -22,7 +23,7 @@ The repository already contains a working single-screen vertical slice rather th
 
 | Area | Present now | Gap to the agreed release |
 | --- | --- | --- |
-| Party | One party can be named and PCs added by name. | Multiple-party workflow, editing/removal, and notes are not implemented. |
+| Party | Multiple parties can be created, selected, renamed, and deleted; PCs can be added, edited, and removed with notes. | Dedicated party management views and richer validation remain future work. |
 | Creatures | Minimal custom creatures can be created with name, AC, HP, and Dexterity modifier. | Editing/removal and the fuller SRD-aligned stat block are missing. |
 | Encounter setup | One selected creature can be added at a bounded quantity alongside party members. | Encounter listing/management, groups, and SRD selection are missing. |
 | Combat | Manual initiative, descending sort, turn advance, round rollover, creature damage/healing, and defeated state exist. | Creature auto-roll/group initiative, boss resources, delay/resume, mid-combat additions, and broader edge-case rules are missing. |

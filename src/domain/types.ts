@@ -46,7 +46,7 @@ export type CombatantState = {
 export type Encounter = {
   id: string
   name: string
-  partyId: string
+  partyId?: string
   combatants: CombatantState[]
   round: number
   currentTurnIndex: number

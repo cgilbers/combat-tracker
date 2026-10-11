@@ -1,6 +1,16 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { createBackup, database, parseBackup, restoreBackup, saveParty } from './database'
-import type { Party } from '../domain/types'
+import {
+  createBackup,
+  database,
+  deleteParty,
+  loadAppData,
+  parseBackup,
+  restoreBackup,
+  saveCreature,
+  saveEncounter,
+  saveParty,
+} from './database'
+import type { Creature, Encounter, Party } from '../domain/types'
 
 const testParty: Party = {
   id: 'party-1',
@@ -22,6 +32,64 @@ describe('combat tracker database', () => {
 
     expect(backup.version).toBe(1)
     expect(backup.parties).toEqual([testParty])
+  })
+
+  it('updates or deletes one party without replacing other parties', async () => {
+    const anotherParty: Party = {
+      id: 'party-2',
+      name: 'The Ashen Road',
+      members: [],
+    }
+    const creature: Creature = {
+      id: 'creature-1',
+      source: 'custom',
+      name: 'Ash Wyrmling',
+      ac: 13,
+      hpAverage: 18,
+      dexterityModifier: 1,
+    }
+    const startedEncounter: Encounter = {
+      id: 'encounter-1',
+      name: 'The Old Watchtower',
+      partyId: testParty.id,
+      combatants: [
+        {
+          id: 'combatant-1',
+          type: 'pc',
+          refId: 'pc-1',
+          name: 'Mira',
+          initiative: 12,
+        },
+      ],
+      round: 1,
+      currentTurnIndex: 0,
+      isStarted: true,
+    }
+    const updatedParty = {
+      ...testParty,
+      name: 'The Lantern Company Revised',
+      members: [{ id: 'pc-2', name: 'Tamsin', notes: 'Ranger' }],
+    }
+
+    await saveParty(testParty)
+    await saveParty(anotherParty)
+    await saveCreature(creature)
+    await saveEncounter(startedEncounter)
+    await saveParty(updatedParty)
+
+    expect(await loadAppData()).toEqual({
+      parties: [updatedParty, anotherParty],
+      creatures: [creature],
+      encounters: [startedEncounter],
+    })
+
+    await deleteParty(testParty.id)
+
+    expect(await loadAppData()).toEqual({
+      parties: [anotherParty],
+      creatures: [creature],
+      encounters: [startedEncounter],
+    })
   })
 
   it('rejects malformed backups', () => {

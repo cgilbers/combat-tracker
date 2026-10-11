@@ -63,6 +63,11 @@ input:focus, select:focus { border-color: var(--lime); }
 .name-list { margin-top: 20px; border-top: 1px solid var(--line); }
 .name-row, .initiative-row, .combatant-row { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--line); }
 .name-row { justify-content: space-between; padding: 11px 0; color: var(--ink); }
+.party-select-actions { display: flex; align-items: flex-end; gap: 10px; }
+.party-select-actions label { flex: 1; }
+.party-name-field { margin-top: 16px; }
+.party-member-row { display: grid; grid-template-columns: 1fr 1.5fr auto; align-items: end; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.remove-party-member { padding: 10px 0; white-space: nowrap; }
 .name-row small, .helper, .empty-copy, .warning-copy, .section-note, .pc-note { color: var(--dim); font-size: 12px; }
 .helper { margin: 20px 0 0; line-height: 1.5; }
 .empty-copy { padding: 14px 0 0; }
@@ -113,4 +118,4 @@ button:disabled { cursor: not-allowed; opacity: .35; }
 .ac-score { color: var(--orange); font: 11px var(--mono); width: 50px; }
 footer { display: flex; justify-content: space-between; padding-top: 25px; color: var(--dim); font-size: 9px; }
 @media (max-width: 900px) { .workspace { grid-template-columns: 1fr; } .combat-panel { min-height: 480px; } }
-@media (max-width: 560px) { .app-shell { padding: 30px 16px 22px; } .app-header { padding-bottom: 30px; } h1 { font-size: 46px; } .round-badge { min-width: 58px; height: 58px; } .round-badge strong { font-size: 27px; } .app-tools { justify-content: flex-start; flex-wrap: wrap; } .storage-status { width: 100%; } .panel, .combat-panel { padding: 20px; } .form-grid { grid-template-columns: 1fr 1fr; } .wide-field { grid-column: span 2; } .initiative-row .pc-note { display: none; } .combatant-row { flex-wrap: wrap; padding: 10px 0; } .combatant-name { min-width: 110px; } .hp-control { margin-left: 38px; } .hp-adjustment { margin-left: 38px; } footer { flex-wrap: wrap; gap: 8px; } }
+@media (max-width: 560px) { .app-shell { padding: 30px 16px 22px; } .app-header { padding-bottom: 30px; } h1 { font-size: 46px; } .round-badge { min-width: 58px; height: 58px; } .round-badge strong { font-size: 27px; } .app-tools { justify-content: flex-start; flex-wrap: wrap; } .storage-status { width: 100%; } .panel, .combat-panel { padding: 20px; } .form-grid { grid-template-columns: 1fr 1fr; } .wide-field { grid-column: span 2; } .party-member-row { grid-template-columns: 1fr; } .party-member-row .text-button { justify-self: start; } .initiative-row .pc-note { display: none; } .combatant-row { flex-wrap: wrap; padding: 10px 0; } .combatant-name { min-width: 110px; } .hp-control { margin-left: 38px; } .hp-adjustment { margin-left: 38px; } footer { flex-wrap: wrap; gap: 8px; } }
