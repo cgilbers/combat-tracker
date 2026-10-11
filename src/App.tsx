@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { nextTurn, startEncounter, updateCreatureHp } from './combat/engine'
-import type { Character, Creature, Encounter } from './domain/types'
+import { createBackup, loadAppData, parseBackup, restoreBackup, saveAppData } from './data/database'
+import type { Character, Creature, Encounter, Party } from './domain/types'
 
 const createId = () => crypto.randomUUID()
 
-const initialParty = {
+const initialParty: Party = {
   id: createId(),
   name: 'The Lantern Company',
   members: [] as Character[],
@@ -23,6 +24,38 @@ function App() {
   const [encounterName, setEncounterName] = useState('The Old Watchtower')
   const [encounter, setEncounter] = useState<Encounter | null>(null)
   const [hpAdjustment, setHpAdjustment] = useState('1')
+  const [isHydrated, setIsHydrated] = useState(false)
+  const [storageError, setStorageError] = useState('')
+
+  useEffect(() => {
+    let isCancelled = false
+
+    loadAppData()
+      .then((data) => {
+        if (isCancelled) return
+        if (data.parties[0]) setParty(data.parties[0])
+        setCreatures(data.creatures)
+        setEncounter(data.encounters[0] ?? null)
+      })
+      .catch(() => {
+        if (!isCancelled) setStorageError('Saved data could not be loaded. You can continue in memory.')
+      })
+      .finally(() => {
+        if (!isCancelled) setIsHydrated(true)
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isHydrated) return
+
+    saveAppData({ party, creatures, encounter }).catch(() => {
+      setStorageError('Changes could not be saved locally.')
+    })
+  }, [party, creatures, encounter, isHydrated])
 
   const addPc = () => {
     const name = pcName.trim()
@@ -121,6 +154,39 @@ function App() {
     })
   }
 
+  const exportData = async () => {
+    try {
+      const backup = await createBackup()
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `combat-tracker-${new Date().toISOString().slice(0, 10)}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+      setStorageError('')
+    } catch {
+      setStorageError('Backup export failed.')
+    }
+  }
+
+  const importData = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    try {
+      await restoreBackup(parseBackup(await file.text()))
+      const data = await loadAppData()
+      setParty(data.parties[0] ?? initialParty)
+      setCreatures(data.creatures)
+      setEncounter(data.encounters[0] ?? null)
+      setStorageError('')
+    } catch {
+      setStorageError('That file is not a valid combat tracker backup.')
+    }
+  }
+
   const activeCombatant = encounter?.combatants[encounter.currentTurnIndex]
 
   return (
@@ -136,6 +202,11 @@ function App() {
           <strong>{encounter?.round ?? '—'}</strong>
         </div>
       </header>
+      <div className="app-tools">
+        <span className={storageError ? 'storage-status error' : 'storage-status'}>{storageError || (isHydrated ? 'SAVED LOCALLY' : 'LOADING SAVED DATA')}</span>
+        <button className="backup-button" type="button" onClick={exportData} disabled={!isHydrated}>Export JSON</button>
+        <label className="backup-button file-button">Import JSON<input type="file" accept="application/json,.json" onChange={importData} disabled={!isHydrated} /></label>
+      </div>
 
       <section className="workspace">
         <div className="setup-column">

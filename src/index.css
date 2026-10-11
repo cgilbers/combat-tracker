@@ -40,6 +40,13 @@ h3 { font: 500 28px/1.1 var(--heading); }
 .lede { color: var(--muted); margin: 19px 0 0; font-size: 16px; }
 .round-badge { border: 1px solid var(--line); min-width: 78px; height: 78px; display: flex; flex-direction: column; justify-content: center; align-items: center; margin-top: 3px; }
 .round-badge strong { font: 36px/1 var(--heading); color: var(--ink); margin-top: 8px; }
+.app-tools { display: flex; justify-content: flex-end; align-items: center; gap: 10px; padding: 15px 0 0; }
+.storage-status { color: var(--dim); font: 9px var(--mono); margin-right: 8px; }
+.storage-status.error { color: var(--orange); }
+.backup-button { border: 1px solid var(--line); color: var(--muted); background: transparent; padding: 8px 10px; cursor: pointer; font: 10px var(--mono); }
+.backup-button:hover { color: var(--lime); border-color: var(--lime); }
+.file-button { position: relative; overflow: hidden; }
+.file-button input { position: absolute; inset: 0; opacity: 0; cursor: pointer; padding: 0; }
 .workspace { display: grid; grid-template-columns: minmax(320px, .8fr) minmax(500px, 1.2fr); gap: 18px; padding-top: 18px; }
 .setup-column { display: flex; flex-direction: column; gap: 18px; }
 .panel, .combat-panel { background: var(--panel); border: 1px solid var(--line); padding: 25px; }
@@ -106,4 +113,4 @@ button:disabled { cursor: not-allowed; opacity: .35; }
 .ac-score { color: var(--orange); font: 11px var(--mono); width: 50px; }
 footer { display: flex; justify-content: space-between; padding-top: 25px; color: var(--dim); font-size: 9px; }
 @media (max-width: 900px) { .workspace { grid-template-columns: 1fr; } .combat-panel { min-height: 480px; } }
-@media (max-width: 560px) { .app-shell { padding: 30px 16px 22px; } .app-header { padding-bottom: 30px; } h1 { font-size: 46px; } .round-badge { min-width: 58px; height: 58px; } .round-badge strong { font-size: 27px; } .panel, .combat-panel { padding: 20px; } .form-grid { grid-template-columns: 1fr 1fr; } .wide-field { grid-column: span 2; } .initiative-row .pc-note { display: none; } .combatant-row { flex-wrap: wrap; padding: 10px 0; } .combatant-name { min-width: 110px; } .hp-control { margin-left: 38px; } .hp-adjustment { margin-left: 38px; } footer { flex-wrap: wrap; gap: 8px; } }
+@media (max-width: 560px) { .app-shell { padding: 30px 16px 22px; } .app-header { padding-bottom: 30px; } h1 { font-size: 46px; } .round-badge { min-width: 58px; height: 58px; } .round-badge strong { font-size: 27px; } .app-tools { justify-content: flex-start; flex-wrap: wrap; } .storage-status { width: 100%; } .panel, .combat-panel { padding: 20px; } .form-grid { grid-template-columns: 1fr 1fr; } .wide-field { grid-column: span 2; } .initiative-row .pc-note { display: none; } .combatant-row { flex-wrap: wrap; padding: 10px 0; } .combatant-name { min-width: 110px; } .hp-control { margin-left: 38px; } .hp-adjustment { margin-left: 38px; } footer { flex-wrap: wrap; gap: 8px; } }
