@@ -1,4 +1,7 @@
 import { useState } from 'react'
+import { Button } from '../components/Button'
+import { FieldLabel, TextInput } from '../components/FormControls'
+import { Panel } from '../components/Panel'
 import {
   importSrdCreature,
   loadSrdCatalog,
@@ -80,74 +83,72 @@ export function SrdCreatureImporter({
   )
 
   return (
-    <section className="srd-importer" aria-label="SRD creature import">
+    <section className="mt-4 border-t border-line pt-4" aria-label="SRD creature import">
       {!isOpen ? (
-        <button className="backup-button" type="button" onClick={openCatalog}>
+        <Button onClick={openCatalog}>
           Browse SRD creatures
-        </button>
+        </Button>
       ) : (
-        <div className="srd-importer-content">
-          <div className="srd-importer-heading">
+        <Panel as="div" variant="builder" className="p-4">
+          <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <strong>Import from the SRD</strong>
-              <p className="helper">
+              <strong className="font-display text-lg font-medium text-ink">Import from the SRD</strong>
+              <p className="mt-1 text-xs leading-relaxed text-muted">
                 Search the catalog, then import a creature to keep its stat block available offline.
               </p>
             </div>
-            <button className="text-button" type="button" onClick={() => setIsOpen(false)}>
+            <Button variant="ghost" className="shrink-0" onClick={() => setIsOpen(false)}>
               Close
-            </button>
+            </Button>
           </div>
 
           {catalogStatus === 'loading' && (
-            <p role="status" className="section-note">Loading SRD catalog…</p>
+            <p role="status" className="mb-3 text-sm text-muted">Loading SRD catalog…</p>
           )}
           {catalogStatus === 'network-error' && (
-            <div className="srd-status" role="alert">
-              <p>{importError}</p>
-              <button className="backup-button" type="button" onClick={() => void refreshCatalog()}>
+            <div className="mb-3 border border-orange/40 bg-orange/10 p-3" role="alert">
+              <p className="mb-3 text-sm text-orange">{importError}</p>
+              <Button onClick={() => void refreshCatalog()}>
                 Retry catalog
-              </button>
+              </Button>
             </div>
           )}
           {catalogStatus === 'cache' && (
-            <p role="status" className="srd-cache-note">
+            <p role="status" className="mb-3 border border-line bg-[#161a18] p-3 text-xs leading-relaxed text-muted">
               Offline catalog cache · {catalog.length} creatures listed. Only imported stat blocks are available offline.
             </p>
           )}
           {catalogStatus === 'success' && (
-            <p role="status" className="srd-cache-note">
+            <p role="status" className="mb-3 border border-line bg-[#161a18] p-3 text-xs leading-relaxed text-muted">
               Catalog loaded · {catalog.length} SRD creatures available.
             </p>
           )}
 
           {catalog.length > 0 && (
             <>
-              <label className="srd-search-field">
+              <FieldLabel className="mb-3">
                 Search creatures by name
-                <input
+                <TextInput
                   aria-label="Search SRD creatures"
                   type="search"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Goblin"
                 />
-              </label>
+              </FieldLabel>
               {search.trim() && (
-                <div className="srd-results" aria-label="SRD search results">
+                <div className="max-h-72 overflow-y-auto border border-line" aria-label="SRD search results">
                   {matchingCreatures.length === 0 ? (
-                    <p className="empty-copy">No SRD creatures match that name.</p>
+                    <p className="p-3 text-sm text-muted">No SRD creatures match that name.</p>
                   ) : (
                     matchingCreatures.slice(0, 20).map((summary) => {
                       const creatureId = `srd:${summary.index}`
                       const isImported = importedIds.has(creatureId)
                       const isImporting = importingIndex === summary.index
                       return (
-                        <div className="srd-result" key={summary.index}>
-                          <span>{summary.name}</span>
-                          <button
-                            className="backup-button"
-                            type="button"
+                        <div className="flex items-center justify-between gap-3 border-b border-line px-3 py-2 last:border-b-0" key={summary.index}>
+                          <span className="text-sm text-ink">{summary.name}</span>
+                          <Button
                             disabled={isImported || Boolean(importingIndex)}
                             onClick={() => void importCreature(summary)}
                           >
@@ -158,24 +159,28 @@ export function SrdCreatureImporter({
                                 : failedIndex === summary.index
                                   ? 'Retry'
                                   : 'Import'}
-                          </button>
+                          </Button>
                         </div>
                       )
                     })
                   )}
                   {matchingCreatures.length > 20 && (
-                    <p className="empty-copy">Showing the first 20 matches. Refine your search to see others.</p>
+                    <p className="border-t border-line p-3 text-xs text-muted">Showing the first 20 matches. Refine your search to see others.</p>
                   )}
                 </div>
               )}
             </>
           )}
           {importError && catalogStatus !== 'network-error' && (
-            <p role="alert" className="warning-copy">{importError}</p>
+            <p role="alert" className="mt-3 text-sm text-orange">{importError}</p>
           )}
-          {importMessage && <p role="status" className="srd-cache-note">{importMessage}</p>}
-          <p className="srd-attribution">{SRD_ATTRIBUTION}</p>
-        </div>
+          {importMessage && (
+            <p role="status" className="mt-3 border border-line bg-[#161a18] p-3 text-xs leading-relaxed text-muted">
+              {importMessage}
+            </p>
+          )}
+          <p className="mt-4 border-t border-line pt-3 text-[10px] leading-relaxed text-dim">{SRD_ATTRIBUTION}</p>
+        </Panel>
       )}
     </section>
   )

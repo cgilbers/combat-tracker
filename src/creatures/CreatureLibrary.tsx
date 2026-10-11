@@ -1,4 +1,8 @@
 import { useState } from 'react'
+import { Button } from '../components/Button'
+import { FieldLabel, SelectInput, TextArea, TextInput } from '../components/FormControls'
+import { Panel } from '../components/Panel'
+import { SectionHeading } from '../components/SectionHeading'
 import {
   formatNamedEntries,
   formatNumericEntries,
@@ -270,18 +274,12 @@ export function CreatureLibrary({
   }
 
   return (
-    <section className="panel">
-      <div className="panel-heading">
-        <div>
-          <span className="step-label">02 / CREATURE</span>
-          <h2>Creature library</h2>
-        </div>
-        <span className="count-pill">{creatures.length} saved</span>
-      </div>
-      <div className="creature-library-actions">
-        <label>
+    <Panel>
+      <SectionHeading step="02 / CREATURE" title="Creature library" count={`${creatures.length} saved`} />
+      <div className="mb-4 flex items-end gap-3">
+        <FieldLabel className="min-w-0 flex-1">
           Select creature
-          <select
+          <SelectInput
             aria-label="Select creature to edit or use"
             value={selectedCreatureId}
             onChange={(event) => {
@@ -296,58 +294,58 @@ export function CreatureLibrary({
                 {creature.name} · {creature.source.toUpperCase()} · AC {creature.ac} · {creature.hpAverage} HP
               </option>
             ))}
-          </select>
-        </label>
-        <button className="backup-button" type="button" onClick={beginCreating}>
+          </SelectInput>
+        </FieldLabel>
+        <Button className="shrink-0" onClick={beginCreating}>
           New creature
-        </button>
+        </Button>
       </div>
       <SrdCreatureImporter creatures={creatures} onImportCreature={onSaveCreature} />
-      <p className="section-note">
+      <p className="mb-4 mt-5 border-t border-line pt-4 font-mono text-[10px] tracking-[.3px] text-muted">
         {editingCreature ? `Editing ${editingCreature.source.toUpperCase()} creature` : 'Creating a custom creature'}
       </p>
-      <div className="creature-form-grid">
-        <label className="wide-field">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <FieldLabel className="col-span-full">
           Name
-          <input aria-label="Creature name" value={form.name} onChange={(event) => updateForm('name', event.target.value)} />
-        </label>
-        <label>
+          <TextInput aria-label="Creature name" value={form.name} onChange={(event) => updateForm('name', event.target.value)} />
+        </FieldLabel>
+        <FieldLabel>
           Type
-          <input value={form.type} onChange={(event) => updateForm('type', event.target.value)} />
-        </label>
-        <label>
+          <TextInput value={form.type} onChange={(event) => updateForm('type', event.target.value)} />
+        </FieldLabel>
+        <FieldLabel>
           Size
-          <input value={form.size} onChange={(event) => updateForm('size', event.target.value)} />
-        </label>
-        <label>
+          <TextInput value={form.size} onChange={(event) => updateForm('size', event.target.value)} />
+        </FieldLabel>
+        <FieldLabel>
           Alignment
-          <input value={form.alignment} onChange={(event) => updateForm('alignment', event.target.value)} />
-        </label>
-        <label>
+          <TextInput value={form.alignment} onChange={(event) => updateForm('alignment', event.target.value)} />
+        </FieldLabel>
+        <FieldLabel>
           AC
-          <input aria-label="Creature AC" type="number" min="1" value={form.ac} onChange={(event) => updateForm('ac', event.target.value)} />
-        </label>
-        <label>
+          <TextInput aria-label="Creature AC" type="number" min="1" value={form.ac} onChange={(event) => updateForm('ac', event.target.value)} />
+        </FieldLabel>
+        <FieldLabel>
           Average HP
-          <input aria-label="Creature average HP" type="number" min="1" value={form.hpAverage} onChange={(event) => updateForm('hpAverage', event.target.value)} />
-        </label>
-        <label>
+          <TextInput aria-label="Creature average HP" type="number" min="1" value={form.hpAverage} onChange={(event) => updateForm('hpAverage', event.target.value)} />
+        </FieldLabel>
+        <FieldLabel>
           HP formula
-          <input placeholder="4d8 + 4" value={form.hpFormula} onChange={(event) => updateForm('hpFormula', event.target.value)} />
-        </label>
-        <label>
+          <TextInput placeholder="4d8 + 4" value={form.hpFormula} onChange={(event) => updateForm('hpFormula', event.target.value)} />
+        </FieldLabel>
+        <FieldLabel>
           Speed
-          <input placeholder="30 ft., fly 60 ft." value={form.speed} onChange={(event) => updateForm('speed', event.target.value)} />
-        </label>
+          <TextInput placeholder="30 ft., fly 60 ft." value={form.speed} onChange={(event) => updateForm('speed', event.target.value)} />
+        </FieldLabel>
       </div>
 
-      <fieldset className="creature-fieldset">
-        <legend>Ability scores</legend>
-        <div className="ability-score-grid">
+      <fieldset className="my-5 border border-line p-4">
+        <legend className="px-2 font-mono text-[10px] tracking-[.5px] text-lime">Ability scores</legend>
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
           {abilityKeys.map((ability) => (
-            <label key={ability}>
+            <FieldLabel className="min-w-0" key={ability}>
               {ability.toUpperCase()}
-              <input
+              <TextInput
                 aria-label={`${ability.toUpperCase()} ability score`}
                 type="number"
                 min="1"
@@ -362,104 +360,104 @@ export function CreatureLibrary({
                   }))
                 }
               />
-            </label>
+            </FieldLabel>
           ))}
         </div>
       </fieldset>
 
-      <div className="creature-form-grid">
-        <label>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <FieldLabel>
           Saving throws
-          <textarea aria-label="Creature saving throws" placeholder={'Dex: 3\nCon: 2'} value={form.savingThrows} onChange={(event) => updateForm('savingThrows', event.target.value)} />
-        </label>
-        <label>
+          <TextArea aria-label="Creature saving throws" placeholder={'Dex: 3\nCon: 2'} value={form.savingThrows} onChange={(event) => updateForm('savingThrows', event.target.value)} />
+        </FieldLabel>
+        <FieldLabel>
           Skills
-          <textarea aria-label="Creature skills" placeholder={'Perception: 4\nStealth: 3'} value={form.skills} onChange={(event) => updateForm('skills', event.target.value)} />
-        </label>
-        <label>
+          <TextArea aria-label="Creature skills" placeholder={'Perception: 4\nStealth: 3'} value={form.skills} onChange={(event) => updateForm('skills', event.target.value)} />
+        </FieldLabel>
+        <FieldLabel>
           Senses
-          <input value={form.senses} onChange={(event) => updateForm('senses', event.target.value)} />
-        </label>
-        <label>
+          <TextInput value={form.senses} onChange={(event) => updateForm('senses', event.target.value)} />
+        </FieldLabel>
+        <FieldLabel>
           Languages
-          <input value={form.languages} onChange={(event) => updateForm('languages', event.target.value)} />
-        </label>
-        <label>
+          <TextInput value={form.languages} onChange={(event) => updateForm('languages', event.target.value)} />
+        </FieldLabel>
+        <FieldLabel>
           Challenge rating
-          <input aria-label="Creature challenge rating" type="number" min="0" step="any" value={form.challengeRating} onChange={(event) => updateForm('challengeRating', event.target.value)} />
-        </label>
-        <label>
+          <TextInput aria-label="Creature challenge rating" type="number" min="0" step="any" value={form.challengeRating} onChange={(event) => updateForm('challengeRating', event.target.value)} />
+        </FieldLabel>
+        <FieldLabel>
           XP
-          <input aria-label="Creature XP" type="number" min="0" step="1" value={form.xp} onChange={(event) => updateForm('xp', event.target.value)} />
-        </label>
-        <label className="wide-field">
+          <TextInput aria-label="Creature XP" type="number" min="0" step="1" value={form.xp} onChange={(event) => updateForm('xp', event.target.value)} />
+        </FieldLabel>
+        <FieldLabel className="col-span-full">
           Traits
-          <textarea aria-label="Creature traits" placeholder="Name: Description (one per line)" value={form.traits} onChange={(event) => updateForm('traits', event.target.value)} />
-        </label>
-        <label className="wide-field">
+          <TextArea aria-label="Creature traits" placeholder="Name: Description (one per line)" value={form.traits} onChange={(event) => updateForm('traits', event.target.value)} />
+        </FieldLabel>
+        <FieldLabel className="col-span-full">
           Actions
-          <textarea aria-label="Creature actions" placeholder="Name: Description (one per line)" value={form.actions} onChange={(event) => updateForm('actions', event.target.value)} />
-        </label>
-        <label className="wide-field">
+          <TextArea aria-label="Creature actions" placeholder="Name: Description (one per line)" value={form.actions} onChange={(event) => updateForm('actions', event.target.value)} />
+        </FieldLabel>
+        <FieldLabel className="col-span-full">
           Reactions
-          <textarea aria-label="Creature reactions" placeholder="Name: Description (one per line)" value={form.reactions} onChange={(event) => updateForm('reactions', event.target.value)} />
-        </label>
-        <label className="wide-field">
+          <TextArea aria-label="Creature reactions" placeholder="Name: Description (one per line)" value={form.reactions} onChange={(event) => updateForm('reactions', event.target.value)} />
+        </FieldLabel>
+        <FieldLabel className="col-span-full">
           Legendary actions
-          <textarea aria-label="Creature legendary actions" placeholder="Name: Description (one per line)" value={form.legendaryActions} onChange={(event) => updateForm('legendaryActions', event.target.value)} />
-        </label>
-        <label className="wide-field">
+          <TextArea aria-label="Creature legendary actions" placeholder="Name: Description (one per line)" value={form.legendaryActions} onChange={(event) => updateForm('legendaryActions', event.target.value)} />
+        </FieldLabel>
+        <FieldLabel className="col-span-full">
           Lair actions
-          <textarea aria-label="Creature lair actions" placeholder="Name: Description (one per line)" value={form.lairActions} onChange={(event) => updateForm('lairActions', event.target.value)} />
-        </label>
-        <label className="wide-field">
+          <TextArea aria-label="Creature lair actions" placeholder="Name: Description (one per line)" value={form.lairActions} onChange={(event) => updateForm('lairActions', event.target.value)} />
+        </FieldLabel>
+        <FieldLabel className="col-span-full">
           Spellcasting
-          <textarea aria-label="Creature spellcasting" value={form.spellcasting} onChange={(event) => updateForm('spellcasting', event.target.value)} />
-        </label>
+          <TextArea aria-label="Creature spellcasting" value={form.spellcasting} onChange={(event) => updateForm('spellcasting', event.target.value)} />
+        </FieldLabel>
       </div>
 
-      <fieldset className="creature-fieldset">
-        <legend>Boss resource limits</legend>
-        <div className="creature-form-grid">
-          <label>
+      <fieldset className="my-5 border border-line p-4">
+        <legend className="px-2 font-mono text-[10px] tracking-[.5px] text-lime">Boss resource limits</legend>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <FieldLabel>
             Spell slots by level
-            <textarea aria-label="Spell slot limits" placeholder={'1: 4\n2: 3'} value={form.spellSlots} onChange={(event) => updateForm('spellSlots', event.target.value)} />
-          </label>
-          <label>
+            <TextArea aria-label="Spell slot limits" placeholder={'1: 4\n2: 3'} value={form.spellSlots} onChange={(event) => updateForm('spellSlots', event.target.value)} />
+          </FieldLabel>
+          <FieldLabel>
             Legendary action limit
-            <input aria-label="Legendary action limit" type="number" min="0" step="1" value={form.legendaryActionLimit} onChange={(event) => updateForm('legendaryActionLimit', event.target.value)} />
-          </label>
-          <label>
+            <TextInput aria-label="Legendary action limit" type="number" min="0" step="1" value={form.legendaryActionLimit} onChange={(event) => updateForm('legendaryActionLimit', event.target.value)} />
+          </FieldLabel>
+          <FieldLabel>
             Legendary resistance limit
-            <input aria-label="Legendary resistance limit" type="number" min="0" step="1" value={form.legendaryResistanceLimit} onChange={(event) => updateForm('legendaryResistanceLimit', event.target.value)} />
-          </label>
-          <label className="checkbox-field">
+            <TextInput aria-label="Legendary resistance limit" type="number" min="0" step="1" value={form.legendaryResistanceLimit} onChange={(event) => updateForm('legendaryResistanceLimit', event.target.value)} />
+          </FieldLabel>
+          <label className="flex flex-row items-center justify-between gap-2 self-end border border-line bg-[#161a18] px-3 py-3 font-mono text-[10px] tracking-[.3px] text-muted uppercase">
             Has lair actions
-            <input type="checkbox" checked={form.hasLairActions} onChange={(event) => updateForm('hasLairActions', event.target.checked)} />
+            <input className="size-4 accent-lime" type="checkbox" checked={form.hasLairActions} onChange={(event) => updateForm('hasLairActions', event.target.checked)} />
           </label>
         </div>
       </fieldset>
 
-      <label className="creature-tags">
+      <FieldLabel className="mb-4">
         Tags
-        <input placeholder="goblin, boss, undead" value={form.tags} onChange={(event) => updateForm('tags', event.target.value)} />
-      </label>
+        <TextInput placeholder="goblin, boss, undead" value={form.tags} onChange={(event) => updateForm('tags', event.target.value)} />
+      </FieldLabel>
       {validationErrors.length > 0 && (
-        <ul className="validation-errors" role="alert">
+        <ul className="mb-4 list-inside list-disc border border-orange/40 bg-orange/10 p-3 text-sm text-orange" role="alert">
           {validationErrors.map((error) => <li key={error}>{error}</li>)}
         </ul>
       )}
-      {operationError && <p className="warning-copy" role="alert">{operationError}</p>}
-      <div className="creature-form-actions">
-        <button className="text-button" type="button" onClick={save} disabled={isSaving}>
+      {operationError && <p className="mb-4 text-sm text-orange" role="alert">{operationError}</p>}
+      <div className="flex flex-wrap gap-3 border-t border-line pt-4">
+        <Button variant="primary" onClick={save} disabled={isSaving}>
           {editingCreature ? 'Save creature changes' : 'Save creature'}
-        </button>
+        </Button>
         {editingCreature && (
-          <button className="text-button delete-creature-button" type="button" onClick={remove}>
+          <Button variant="danger" onClick={remove}>
             Delete creature
-          </button>
+          </Button>
         )}
       </div>
-    </section>
+    </Panel>
   )
 }
