@@ -16,7 +16,8 @@ The app uses the public D&D 5e API as its SRD provider and normalizes the return
 - Source: https://www.dnd5eapi.co/api
 - Content is limited to the System Reference Document (SRD), to avoid bundling non-SRD content.
 - Imported SRD creatures are stored locally and marked with the `source: 'srd'` value so they are distinguishable from custom creatures.
-- The project maintains the required SRD/Open Gaming License attribution in this repository and does not ship or bundle copyrighted non-SRD creature content.
+
+This work includes material taken from the [System Reference Document 5.1 (SRD 5.1)](https://dnd.wizards.com/resources/systems-reference-document) by Wizards of the Coast LLC. The SRD 5.1 is licensed under the [Creative Commons Attribution 4.0 International License](https://creativecommons.org/licenses/by/4.0/). Creature data is retrieved from the [D&D 5e API](https://www.dnd5eapi.co/).
 
 ## Development
 

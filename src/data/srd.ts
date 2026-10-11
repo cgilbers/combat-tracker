@@ -1,27 +1,42 @@
 import type { Creature, CreatureAction } from '../domain/types'
 
 export const SRD_CACHE_KEY = 'combat-tracker:srd-creatures'
+export const SRD_CATALOG_CACHE_KEY = 'combat-tracker:srd-catalog'
 export const SRD_ATTRIBUTION =
-  'D&D 5e SRD creature data is provided by the D&D 5e API and is used under the Open Gaming License and the SRD terms described by Wizards of the Coast.'
+  'This work includes material taken from the System Reference Document 5.1 (SRD 5.1) by Wizards of the Coast LLC. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License. Creature data is retrieved from the D&D 5e API.'
+
+export type SrdMonsterSummary = {
+  index: string
+  name: string
+}
 
 export type SrdProvider = {
-  listMonsters(): Promise<string[]>
+  listMonsters(): Promise<SrdMonsterSummary[]>
   fetchMonster(index: string): Promise<unknown>
 }
 
-export type SrdImportResult =
+export type SrdCatalogResult =
   | {
       status: 'success'
-      creatures: Creature[]
+      creatures: SrdMonsterSummary[]
     }
   | {
       status: 'cache'
-      creatures: Creature[]
-      cachedAt: string
+      creatures: SrdMonsterSummary[]
     }
   | {
       status: 'network-error'
       creatures: []
+      error: Error
+    }
+
+export type SrdSingleImportResult =
+  | {
+      status: 'success' | 'cache'
+      creature: Creature
+    }
+  | {
+      status: 'network-error'
       error: Error
     }
 
@@ -72,9 +87,11 @@ function toActionList(items: unknown): CreatureAction[] | undefined {
 
 function readAbility(record: Record<string, unknown>, key: string): number {
   const value = getProperty(record, key)
-  if (typeof value === 'number') return value
-  if (typeof value === 'string') return Number(value) || 10
-  return 10
+  const score = asNumber(value)
+  if (score === undefined) {
+    throw new Error(`SRD creature response is missing the ${key} ability score.`)
+  }
+  return score
 }
 
 function readAbilityScores(record: Record<string, unknown>): Record<string, number> {
@@ -126,14 +143,29 @@ function parseNameValueMap(value: unknown): Record<string, number> | undefined {
 }
 
 export function normalizeSrdCreature(raw: unknown): Creature {
-  const record = (raw ?? {}) as Record<string, unknown>
-  const name = typeof record.name === 'string' && record.name.trim() ? record.name.trim() : 'Unnamed SRD creature'
-  const index = typeof record.index === 'string' && record.index.trim() ? record.index.trim() : name.toLowerCase().replace(/\s+/g, '-')
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('SRD creature response is not a valid stat block.')
+  }
+  const record = raw as Record<string, unknown>
+  if (typeof record.name !== 'string' || !record.name.trim()) {
+    throw new Error('SRD creature response is missing its name.')
+  }
+  if (typeof record.index !== 'string' || !record.index.trim()) {
+    throw new Error('SRD creature response is missing its identifier.')
+  }
+  const name = record.name.trim()
+  const index = record.index.trim()
   const armorClass = Array.isArray(record.armor_class)
     ? (record.armor_class as Array<Record<string, unknown>>).find((entry) => typeof entry.value === 'number' || typeof entry.value === 'string')
     : undefined
-  const ac = asNumber(armorClass?.value) ?? asNumber(record.ac) ?? 10
-  const hpAverage = asNumber(record.hit_points) ?? 1
+  const ac = asNumber(armorClass?.value) ?? asNumber(record.ac)
+  const hpAverage = asNumber(record.hit_points)
+  if (ac === undefined || !Number.isInteger(ac) || ac < 1) {
+    throw new Error(`SRD creature response for ${name} has invalid armor class.`)
+  }
+  if (hpAverage === undefined || !Number.isInteger(hpAverage) || hpAverage < 1) {
+    throw new Error(`SRD creature response for ${name} has invalid hit points.`)
+  }
   const hpFormula = typeof record.hit_dice === 'string' ? record.hit_dice : undefined
   const abilityScores = readAbilityScores(record)
   const speedValue =
@@ -156,6 +188,10 @@ export function normalizeSrdCreature(raw: unknown): Creature {
     ? (record.challenge as Record<string, unknown>)
     : undefined
   const xp = asNumber(challenge?.xp) ?? asNumber(record.xp)
+  const challengeRating =
+    asNumber(challenge?.cr) ??
+    asNumber(challenge?.rating) ??
+    asNumber(record.challenge_rating)
   const traits = toActionList(record.special_abilities)
   const actions = toActionList(record.actions)
   const reactions = toActionList(record.reactions)
@@ -173,7 +209,6 @@ export function normalizeSrdCreature(raw: unknown): Creature {
       ? {
           ...(legendaryActions ? { legendaryActions: legendaryActions.length } : {}),
           ...(lairActions ? { hasLairActions: true } : {}),
-          ...(spellcastingValue ? { spellSlots: { 1: 0 } } : {}),
         }
       : undefined
 
@@ -201,12 +236,7 @@ export function normalizeSrdCreature(raw: unknown): Creature {
     skills: parseNameValueMap(record.skills),
     senses: sensesValue,
     languages: typeof record.languages === 'string' ? record.languages : undefined,
-    challengeRating:
-      typeof challenge?.cr === 'number'
-        ? challenge.cr
-        : typeof challenge?.rating === 'number'
-          ? challenge.rating
-          : undefined,
+    challengeRating,
     xp,
     traits,
     actions,
@@ -254,6 +284,38 @@ export function saveCachedSrdCreatures(creatures: Creature[]): void {
   )
 }
 
+function readCachedSrdCatalog(): SrdMonsterSummary[] {
+  const storage = getStorage()
+  if (!storage) return []
+
+  try {
+    const raw = storage.getItem(SRD_CATALOG_CACHE_KEY)
+    if (!raw) return []
+
+    const parsed = JSON.parse(raw) as { creatures?: unknown }
+    if (!Array.isArray(parsed.creatures)) return []
+    return parsed.creatures.filter(
+      (creature): creature is SrdMonsterSummary =>
+        Boolean(creature) &&
+        typeof creature === 'object' &&
+        typeof (creature as SrdMonsterSummary).index === 'string' &&
+        typeof (creature as SrdMonsterSummary).name === 'string',
+    )
+  } catch {
+    return []
+  }
+}
+
+function saveCachedSrdCatalog(creatures: SrdMonsterSummary[]): void {
+  const storage = getStorage()
+  if (!storage) return
+
+  storage.setItem(
+    SRD_CATALOG_CACHE_KEY,
+    JSON.stringify({ version: 1, creatures }),
+  )
+}
+
 export class DnD5eApiProvider implements SrdProvider {
   readonly baseUrl: string
 
@@ -261,15 +323,21 @@ export class DnD5eApiProvider implements SrdProvider {
     this.baseUrl = baseUrl
   }
 
-  async listMonsters(): Promise<string[]> {
+  async listMonsters(): Promise<SrdMonsterSummary[]> {
     const payload = await this.fetchJson(`${this.baseUrl}/monsters`)
     const results = typeof payload === 'object' && payload !== null && 'results' in payload
-      ? (payload as { results?: Array<{ index?: string }> }).results ?? []
+      ? (payload as { results?: Array<{ index?: string; name?: string }> }).results ?? []
       : []
 
     return results
-      .map((entry) => entry.index)
-      .filter((index): index is string => typeof index === 'string' && index.trim() !== '')
+      .filter(
+        (entry): entry is { index: string; name: string } =>
+          typeof entry.index === 'string' &&
+          entry.index.trim() !== '' &&
+          typeof entry.name === 'string' &&
+          entry.name.trim() !== '',
+      )
+      .map(({ index, name }) => ({ index, name }))
   }
 
   async fetchMonster(index: string): Promise<unknown> {
@@ -285,39 +353,48 @@ export class DnD5eApiProvider implements SrdProvider {
   }
 }
 
-export async function fetchSrdCreatures(
+export async function loadSrdCatalog(
   provider: SrdProvider = new DnD5eApiProvider(),
-): Promise<SrdImportResult> {
+): Promise<SrdCatalogResult> {
   try {
-    const monsters = await provider.listMonsters()
-    const creatureData = await Promise.all(
-      monsters.map((monster) => provider.fetchMonster(monster)),
-    )
-    const creatures = creatureData.map((monster) => normalizeSrdCreature(monster))
-    saveCachedSrdCreatures(creatures)
+    const creatures = await provider.listMonsters()
+    saveCachedSrdCatalog(creatures)
     return { status: 'success', creatures }
   } catch (error) {
-    const cachedCreatures = readCachedSrdCreatures()
+    const cachedCreatures = readCachedSrdCatalog()
     if (cachedCreatures.length > 0) {
-      return {
-        status: 'cache',
-        creatures: cachedCreatures,
-        cachedAt: new Date().toISOString(),
-      }
+      return { status: 'cache', creatures: cachedCreatures }
     }
 
     return {
       status: 'network-error',
       creatures: [],
-      error: error instanceof Error ? error : new Error('Unknown SRD import failure.'),
+      error: error instanceof Error ? error : new Error('Unknown SRD catalog failure.'),
     }
   }
 }
 
-export const loadSrdCreatures = fetchSrdCreatures
-export const importSrdCreatures = fetchSrdCreatures
-export const writeCachedCreatures = saveCachedSrdCreatures
-export const readCachedCreatures = readCachedSrdCreatures
-export const DnD5eApi = DnD5eApiProvider
-export const DnD5eApiAdapter = DnD5eApiProvider
-export const createSrdProvider = () => new DnD5eApiProvider()
+export async function importSrdCreature(
+  index: string,
+  provider: SrdProvider = new DnD5eApiProvider(),
+): Promise<SrdSingleImportResult> {
+  try {
+    const creature = normalizeSrdCreature(await provider.fetchMonster(index))
+    const cachedCreatures = readCachedSrdCreatures()
+    saveCachedSrdCreatures([
+      ...cachedCreatures.filter((cachedCreature) => cachedCreature.id !== creature.id),
+      creature,
+    ])
+    return { status: 'success', creature }
+  } catch (error) {
+    const cachedCreature = readCachedSrdCreatures().find(
+      (creature) => creature.id === `srd:${index}`,
+    )
+    if (cachedCreature) return { status: 'cache', creature: cachedCreature }
+
+    return {
+      status: 'network-error',
+      error: error instanceof Error ? error : new Error('Unknown SRD import failure.'),
+    }
+  }
+}

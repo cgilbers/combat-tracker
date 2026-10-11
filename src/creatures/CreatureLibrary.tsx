@@ -6,6 +6,7 @@ import {
   parseNumericEntries,
   validateCreature,
 } from '../domain/creature'
+import { SrdCreatureImporter } from './SrdCreatureImporter'
 import type { AbilityScores, Creature } from '../domain/types'
 
 type CreatureForm = {
@@ -301,6 +302,7 @@ export function CreatureLibrary({
           New creature
         </button>
       </div>
+      <SrdCreatureImporter creatures={creatures} onImportCreature={onSaveCreature} />
       <p className="section-note">
         {editingCreature ? `Editing ${editingCreature.source.toUpperCase()} creature` : 'Creating a custom creature'}
       </p>

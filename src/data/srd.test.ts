@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   SRD_CACHE_KEY,
-  fetchSrdCreatures,
+  importSrdCreature,
+  loadSrdCatalog,
   normalizeSrdCreature,
   readCachedSrdCreatures,
   saveCachedSrdCreatures,
@@ -59,6 +60,7 @@ const sampleApiCreature = {
   senses: { darkvision: '60 ft.' },
   languages: 'Common, Goblin',
   challenge: { xp: 50 },
+  challenge_rating: 0.25,
   special_abilities: [{ name: 'Nimble Escape', desc: 'The goblin can take the Disengage or Hide action as a bonus action.' }],
   actions: [{ name: 'Scimitar', desc: 'Melee Weapon Attack: +4 to hit, reach 5 ft., one target.' }],
 }
@@ -78,9 +80,19 @@ describe('SRD creature import', () => {
       type: 'humanoid',
       size: 'Small',
       alignment: 'neutral evil',
+      challengeRating: 0.25,
       skills: { Stealth: 6 },
       traits: [{ name: 'Nimble Escape', description: 'The goblin can take the Disengage or Hide action as a bonus action.' }],
     })
+  })
+
+  it('rejects incomplete stat blocks instead of creating success-shaped defaults', () => {
+    expect(() =>
+      normalizeSrdCreature({
+        ...sampleApiCreature,
+        hit_points: undefined,
+      }),
+    ).toThrow('SRD creature response for Goblin has invalid hit points.')
   })
 
   it('stores and reads a local SRD cache', () => {
@@ -92,34 +104,87 @@ describe('SRD creature import', () => {
     expect(globalThis.localStorage.getItem(SRD_CACHE_KEY)).toContain('"source":"srd"')
   })
 
-  it('returns a cache fallback when the provider fails and there is saved content', async () => {
-    const creature = normalizeSrdCreature(sampleApiCreature)
-    saveCachedSrdCreatures([creature])
-
-    const result = await fetchSrdCreatures({
-      listMonsters: async () => {
-        throw new Error('network unavailable')
-      },
+  it('lists catalog summaries without downloading every stat block', async () => {
+    let detailRequests = 0
+    const result = await loadSrdCatalog({
+      listMonsters: async () => [
+        { index: 'goblin', name: 'Goblin' },
+        { index: 'owlbear', name: 'Owlbear' },
+      ],
       fetchMonster: async () => {
-        throw new Error('network unavailable')
+        detailRequests += 1
+        return sampleApiCreature
       },
     })
 
-    expect(result.status).toBe('cache')
-    expect(result.creatures).toEqual([creature])
+    expect(result).toEqual({
+      status: 'success',
+      creatures: [
+        { index: 'goblin', name: 'Goblin' },
+        { index: 'owlbear', name: 'Owlbear' },
+      ],
+    })
+    expect(detailRequests).toBe(0)
   })
 
-  it('reports a provider failure without pretending the import succeeded', async () => {
-    const result = await fetchSrdCreatures({
+  it('imports and caches only the selected SRD creature', async () => {
+    const fetched: string[] = []
+    const result = await importSrdCreature('goblin', {
+      listMonsters: async () => [{ index: 'goblin', name: 'Goblin' }],
+      fetchMonster: async (index) => {
+        fetched.push(index)
+        return sampleApiCreature
+      },
+    })
+
+    expect(result.status).toBe('success')
+    if (result.status === 'network-error') throw result.error
+    expect(result.creature).toMatchObject({ id: 'srd:goblin', source: 'srd' })
+    expect(fetched).toEqual(['goblin'])
+    expect(readCachedSrdCreatures()).toEqual([result.creature])
+  })
+
+  it('uses the catalog cache when the provider is unavailable', async () => {
+    await loadSrdCatalog({
+      listMonsters: async () => [{ index: 'goblin', name: 'Goblin' }],
+      fetchMonster: async () => sampleApiCreature,
+    })
+
+    const result = await loadSrdCatalog({
       listMonsters: async () => {
         throw new Error('network unavailable')
       },
+      fetchMonster: async () => sampleApiCreature,
+    })
+
+    expect(result).toMatchObject({
+      status: 'cache',
+      creatures: [{ index: 'goblin', name: 'Goblin' }],
+    })
+  })
+
+  it('reports a detail-fetch failure without indicating the creature was imported', async () => {
+    const result = await importSrdCreature('goblin', {
+      listMonsters: async () => [{ index: 'goblin', name: 'Goblin' }],
       fetchMonster: async () => {
         throw new Error('network unavailable')
       },
     })
 
     expect(result.status).toBe('network-error')
-    expect(result.creatures).toEqual([])
+  })
+
+  it('returns an imported creature from the cache when detail fetching fails offline', async () => {
+    const creature = normalizeSrdCreature(sampleApiCreature)
+    saveCachedSrdCreatures([creature])
+
+    const result = await importSrdCreature('goblin', {
+      listMonsters: async () => [{ index: 'goblin', name: 'Goblin' }],
+      fetchMonster: async () => {
+        throw new Error('network unavailable')
+      },
+    })
+
+    expect(result).toEqual({ status: 'cache', creature })
   })
 })
