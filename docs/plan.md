@@ -24,10 +24,10 @@ The repository already contains a working single-screen vertical slice rather th
 | Area | Present now | Gap to the agreed release |
 | --- | --- | --- |
 | Party | Multiple parties can be created, selected, renamed, and deleted; PCs can be added, edited, and removed with notes. | Dedicated party management views and richer validation remain future work. |
-| Creatures | Minimal custom creatures can be created with name, AC, HP, and Dexterity modifier. | Editing/removal and the fuller SRD-aligned stat block are missing. |
+| Creatures | A reusable custom creature library supports create, view, edit, and delete across SRD-aligned fields, with custom/SRD source represented. | SRD provider import and full combat use of all stat-block/resource fields remain separate work. |
 | Encounter setup | One selected creature can be added at a bounded quantity alongside party members. | Encounter listing/management, groups, and SRD selection are missing. |
 | Combat | Manual initiative, descending sort, turn advance, round rollover, creature damage/healing, and defeated state exist. | Creature auto-roll/group initiative, boss resources, delay/resume, mid-combat additions, and broader edge-case rules are missing. |
-| Persistence | Dexie stores parties, creatures, and encounters; version-1 JSON backup import/export exists. | The UI currently loads the first party/encounter and replaces saved creature/encounter tables on save; multiple saved records need a safe workflow. Migration and reload coverage are limited. |
+| Persistence | Dexie stores parties, creatures, and the active encounter; version-1 JSON backup import/export exists. Creature edits and deletes persist as individual records. | Multiple encounter management, migration, and reload coverage remain limited. |
 | Tests | Vitest covers basic combat order/turn/HP behavior and database backup operations. | Broader domain, persistence-reload, import, error, and UI workflows need coverage. |
 | Offline UX | App data is stored locally and the UI is styled for combat use. | No PWA/service-worker support or verified offline app-shell startup is present. |
 | Architecture | Types, combat logic, and database code are separated. | `App.tsx` currently owns setup, combat, persistence orchestration, and import/export UI; split by workflow as features grow. |
@@ -41,7 +41,7 @@ Work in independently verifiable slices. Preserve the existing working flow whil
 ### Phase 1: Complete local party, creature, and encounter workflows
 
 1. Expand party and PC management to support the agreed name-and-notes data, with create, edit, and delete behavior.
-2. Expand creature management from the current minimal form to editable, deletable creature records; progressively add the agreed stat-block fields and stat-block viewing.
+2. Expand creature management from the current minimal form to editable, deletable creature records with the agreed stat-block fields and stat-block viewing.
 3. Support multiple saved parties, creatures, and encounters without autosave replacing unrelated records.
 4. Add encounter list/detail management and build encounters from a selected party and saved creatures.
 5. Keep party PC HP/AC out of the model and UI; cover this boundary in tests.

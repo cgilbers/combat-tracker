@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { nextTurn, startEncounter, updateCreatureHp } from './combat/engine'
+import { CreatureLibrary } from './creatures/CreatureLibrary'
 import {
   createBackup,
+  deleteCreature,
   deleteParty,
   loadAppData,
   parseBackup,
   restoreBackup,
+  saveCreature,
   saveParty,
   saveAppData,
 } from './data/database'
@@ -21,10 +24,6 @@ function App() {
   const [pcNotes, setPcNotes] = useState('')
   const [pcInitiatives, setPcInitiatives] = useState<Record<string, string>>({})
   const [creatures, setCreatures] = useState<Creature[]>([])
-  const [creatureName, setCreatureName] = useState('Ash Wyrmling')
-  const [creatureAc, setCreatureAc] = useState('13')
-  const [creatureHp, setCreatureHp] = useState('18')
-  const [creatureDexterity, setCreatureDexterity] = useState('1')
   const [selectedCreatureId, setSelectedCreatureId] = useState('')
   const [creatureQuantity, setCreatureQuantity] = useState('1')
   const [encounterName, setEncounterName] = useState('The Old Watchtower')
@@ -72,10 +71,10 @@ function App() {
   useEffect(() => {
     if (!isHydrated) return
 
-    saveAppData({ creatures, encounter }).catch(() => {
+    saveAppData({ encounter }).catch(() => {
       setStorageError('Changes could not be saved locally.')
     })
-  }, [creatures, encounter, isHydrated])
+  }, [encounter, isHydrated])
 
   const createParty = () => {
     const newParty: Party = {
@@ -149,22 +148,34 @@ function App() {
     })
   }
 
-  const addCreature = () => {
-    const name = creatureName.trim()
-    const hp = Math.max(Number(creatureHp) || 0, 1)
-    if (!name) return
-
-    const creature: Creature = {
-      id: createId(),
-      source: 'custom',
-      name,
-      ac: Math.max(Number(creatureAc) || 0, 1),
-      hpAverage: hp,
-      dexterityModifier: Number(creatureDexterity) || 0,
+  const persistCreature = async (creature: Creature) => {
+    try {
+      await saveCreature(creature)
+      setCreatures((currentCreatures) => {
+        const exists = currentCreatures.some((item) => item.id === creature.id)
+        return exists
+          ? currentCreatures.map((item) => (item.id === creature.id ? creature : item))
+          : [...currentCreatures, creature]
+      })
+      setStorageError('')
+    } catch (error) {
+      setStorageError('Creature could not be saved locally.')
+      throw error
     }
+  }
 
-    setCreatures((currentCreatures) => [...currentCreatures, creature])
-    setSelectedCreatureId(creature.id)
+  const removeCreature = async (creatureId: string) => {
+    try {
+      await deleteCreature(creatureId)
+      setCreatures((currentCreatures) =>
+        currentCreatures.filter((creature) => creature.id !== creatureId),
+      )
+      if (selectedCreatureId === creatureId) setSelectedCreatureId('')
+      setStorageError('')
+    } catch (error) {
+      setStorageError('Creature could not be deleted from local storage.')
+      throw error
+    }
   }
 
   const buildEncounter = () => {
@@ -450,23 +461,13 @@ function App() {
             </p>
           </section>
 
-          <section className="panel">
-            <div className="panel-heading">
-              <div>
-                <span className="step-label">02 / CREATURE</span>
-                <h2>What stands against them?</h2>
-              </div>
-              <span className="count-pill">{creatures.length} saved</span>
-            </div>
-            <div className="form-grid">
-              <label className="wide-field">Name<input value={creatureName} onChange={(event) => setCreatureName(event.target.value)} /></label>
-              <label>AC<input type="number" min="1" value={creatureAc} onChange={(event) => setCreatureAc(event.target.value)} /></label>
-              <label>HP<input type="number" min="1" value={creatureHp} onChange={(event) => setCreatureHp(event.target.value)} /></label>
-              <label>Dex mod<input type="number" value={creatureDexterity} onChange={(event) => setCreatureDexterity(event.target.value)} /></label>
-            </div>
-            <button className="text-button" type="button" onClick={addCreature}>Save creature <span>→</span></button>
-            {creatures.length > 0 && <label className="select-field">Use creature<select value={selectedCreatureId} onChange={(event) => setSelectedCreatureId(event.target.value)}>{creatures.map((creature) => <option value={creature.id} key={creature.id}>{creature.name} · AC {creature.ac} · {creature.hpAverage} HP</option>)}</select></label>}
-          </section>
+          <CreatureLibrary
+            creatures={creatures}
+            selectedCreatureId={selectedCreatureId}
+            onSelectCreature={setSelectedCreatureId}
+            onSaveCreature={persistCreature}
+            onDeleteCreature={removeCreature}
+          />
 
           <section className="panel builder-panel">
             <div className="panel-heading"><div><span className="step-label">03 / ENCOUNTER</span><h2>Set the scene.</h2></div></div>

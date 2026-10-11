@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   createBackup,
   database,
+  deleteCreature,
   deleteParty,
   loadAppData,
   parseBackup,
   restoreBackup,
   saveCreature,
+  saveAppData,
   saveEncounter,
   saveParty,
 } from './database'
@@ -90,6 +92,47 @@ describe('combat tracker database', () => {
       creatures: [creature],
       encounters: [startedEncounter],
     })
+  })
+
+  it('updates and deletes a creature without replacing other creatures', async () => {
+    const anotherCreature: Creature = {
+      id: 'creature-2',
+      source: 'custom',
+      name: 'Goblin',
+      ac: 15,
+      hpAverage: 7,
+      dexterityModifier: 2,
+    }
+    const updatedCreature: Creature = {
+      id: 'creature-1',
+      source: 'custom',
+      name: 'Ash Wyrmling',
+      ac: 14,
+      hpAverage: 20,
+      dexterityModifier: 1,
+      speed: '30 ft., fly 60 ft.',
+      abilities: { str: 14, dex: 12, con: 13, int: 8, wis: 11, cha: 10 },
+    }
+
+    await saveCreature({ ...updatedCreature, ac: 13 })
+    await saveCreature(anotherCreature)
+    await saveCreature(updatedCreature)
+
+    expect((await loadAppData()).creatures).toEqual([
+      updatedCreature,
+      anotherCreature,
+    ])
+
+    await saveAppData({ encounter: null })
+
+    expect((await loadAppData()).creatures).toEqual([
+      updatedCreature,
+      anotherCreature,
+    ])
+
+    await deleteCreature(updatedCreature.id)
+
+    expect((await loadAppData()).creatures).toEqual([anotherCreature])
   })
 
   it('rejects malformed backups', () => {
