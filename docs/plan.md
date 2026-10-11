@@ -1,111 +1,124 @@
 # Combat Tracker Implementation Plan
 
-This plan builds the application through small, independently testable increments. The MVP delivers one complete local workflow: a DM creates a party, assembles an encounter, and runs combat. Persistence and reusable content follow immediately; SRD integration, advanced combat, generators, OCR, and sync are added only after the core loop is stable.
+## Product Goal
 
-## Phase 1: MVP
+Deliver an offline-capable, single-user tool that lets a Dungeon Master prepare and run a complete combat encounter. The first release includes party and creature management, encounter building, initiative and turn flow, creature HP/AC, boss resources, SRD creature import, and durable local storage.
 
-1. Replace the Vite starter in `src/App.tsx` with a single-screen combat workflow.
-2. Define minimal domain types for parties, characters, creatures, combatants, initiative groups, and encounters.
-3. Keep PCs limited to identity, and notes. PCs do not have app-tracked HP, AC or stats.
-4. Allow the DM to create a party and add PCs with names only. Do not store PC initiative modifiers.
-5. Allow creation or selection of minimal custom creatures with name, AC, HP, and optional Dexterity modifier.
-6. Build an encounter from the selected party and creatures.
-7. Add manual initiative entry, encounter start, turn progression, round tracking, creature HP controls with amount-based Damage and Heal actions, creature AC display, and basic creature details.
-8. Keep state in React while the workflow is being proven. Keep combat behavior in pure TypeScript functions.
+The app is DM-first and local-first. It does not require accounts, a backend, cloud sync, OCR, or multiplayer. Encounter and environment generators are later work, not release gates.
 
-## Phase 2: Tests and Persistence
+## Agreed Product Decisions
 
-9. Add a test runner and unit tests for initiative ordering, turn progression, round rollover, creature HP bounds, and encounter creation.
-10. Verify that PC combatants never expose or mutate HP or AC.
-11. Add Dexie and IndexedDB repositories for parties, custom creatures, and encounters.
-12. Hydrate the app on startup, handle empty and persistence-error states, and define versioned schema migrations.
-13. Add JSON export/import as a local backup mechanism before implementing cloud sync.
-14. Test the complete flow after reload: create party, add initiative-only PC, create creature, start encounter, edit creature HP and turns, and restore state.
+- PCs have names and notes in the party; the app tracks their encounter initiative, but not their HP or AC. Those remain at the table.
+- Creatures have app-managed combat statistics and HP. Creature initiative can be rolled automatically, with group initiative supported; the DM can edit results before combat starts.
+- The combat rules engine is pure TypeScript, independent of React and persistence.
+- IndexedDB is the durable local source of truth. The app remains useful offline; SRD data fetched while online is cached locally.
+- SRD import is part of the first release. Only SRD content may be bundled, and attribution/licensing must be documented.
+- OCR, encounter generation, environment/map generation, remote sync, server hosting, accounts, and multiplayer are deferred.
+- The first release is complete when a DM can use the app offline to prepare and run combat, reopen locally saved data, and rely on tests for combat transitions and persistence.
 
-## Phase 3: Product Structure and Reusable Content
+## Current Codebase Baseline
 
-15. Split the UI into real workflows: Dashboard, Parties, Creatures, Creature Editor, Encounter Builder, and Encounter Run.
-16. Add React Router when multiple real workflows exist; do not create empty navigation shells.
-17. Add shared state infrastructure only when persistence or cross-page coordination makes it necessary.
-18. Expand creature editing incrementally with ability scores, speed, senses, languages, challenge rating, XP, traits, actions, reactions, tags, and boss-resource definitions.
-19. Add validation and source metadata: `custom`, `srd`, and `ocr`.
-20. Keep PC editing limited to identity and notes. Do not add PC initiative modifiers, HP, or AC fields.
-21. Replace the starter styling in `src/index.css` with responsive, accessible, DM-focused layouts and controls.
+The repository already contains a working single-screen vertical slice rather than an untouched Vite starter.
 
-## Phase 4: SRD Content and Boss Combat
+| Area | Present now | Gap to the agreed release |
+| --- | --- | --- |
+| Party | One party can be named and PCs added by name. | Multiple-party workflow, editing/removal, and notes are not implemented. |
+| Creatures | Minimal custom creatures can be created with name, AC, HP, and Dexterity modifier. | Editing/removal and the fuller SRD-aligned stat block are missing. |
+| Encounter setup | One selected creature can be added at a bounded quantity alongside party members. | Encounter listing/management, groups, and SRD selection are missing. |
+| Combat | Manual initiative, descending sort, turn advance, round rollover, creature damage/healing, and defeated state exist. | Creature auto-roll/group initiative, boss resources, delay/resume, mid-combat additions, and broader edge-case rules are missing. |
+| Persistence | Dexie stores parties, creatures, and encounters; version-1 JSON backup import/export exists. | The UI currently loads the first party/encounter and replaces saved creature/encounter tables on save; multiple saved records need a safe workflow. Migration and reload coverage are limited. |
+| Tests | Vitest covers basic combat order/turn/HP behavior and database backup operations. | Broader domain, persistence-reload, import, error, and UI workflows need coverage. |
+| Offline UX | App data is stored locally and the UI is styled for combat use. | No PWA/service-worker support or verified offline app-shell startup is present. |
+| Architecture | Types, combat logic, and database code are separated. | `App.tsx` currently owns setup, combat, persistence orchestration, and import/export UI; split by workflow as features grow. |
 
-22. Define a pluggable SRD provider interface and a D&D 5e API adapter.
-23. Normalize API payloads into the domain `Creature` type and cache fetched SRD creatures locally.
-24. Add loading, retry, API-error, and offline-cache states.
-25. Document SRD/API attribution and licensing before distributing or bundling external data. Do not silently bundle non-SRD content.
-26. Add boss resource state for spell slots, legendary actions, legendary resistances, and lair actions.
-27. Initialize combat resource state from creature definitions and test consumption and round-reset behavior.
+The existing implementation aligns with the agreed local-first core and demonstrates a useful combat loop. The old plan did not fully align: it postponed SRD import and advanced combat beyond the agreed first release, and treated PC initiative-only behavior as an unconfirmed assumption. The PC policy is now resolved as stated above.
 
-## Phase 5: Advanced Combat Slices
+## Implementation Roadmap
 
-28. Add grouped creature initiative and automatic `d20 + Dexterity modifier` rolls with injectable deterministic randomness. Keep PC initiative manual.
-29. Define and test tie-breaking, defeated combatants, initiative edits, and active-turn behavior.
-30. Add mid-encounter creature insertion with creature selection, quantity, automatic/manual initiative, stat-block access, and boss-resource initialization.
-31. Test insertion before, at, and after the active turn, including round transitions.
-32. Add delay/resume initiative in the combat engine: delayed state, no action before original initiative, one re-entry per round, selected re-entry position, updated initiative, and reset at round end.
-33. Add focused edge-case tests before adding the delay/resume UI.
+Work in independently verifiable slices. Preserve the existing working flow while broadening it; do not replace it with empty route shells or introduce a backend/shared-state library without a concrete need.
 
-## Phase 6: Encounter and Environment Generators
+### Phase 1: Complete local party, creature, and encounter workflows
 
-34. Add character level data and define a ruleset abstraction supporting selectable 2014 and 2024 calculations.
-35. Implement and test one encounter-calculation ruleset end to end, then add the second ruleset.
-36. Add official difficulty thresholds and XP multipliers, followed by source filters, creature type and CR filters, maximum creature types, and editable suggestions.
-37. Add reskin metadata for name, HP, AC, damage, speed, cosmetic tags, variant abilities, elite templates, and minion templates.
-38. Add deterministic environment packages with map templates, terrain zones, obstacles, hazards, interactive elements, dynamic events, narrative hooks, and creature synergy notes.
-39. Allow generated environments to attach to new and existing encounters.
+1. Expand party and PC management to support the agreed name-and-notes data, with create, edit, and delete behavior.
+2. Expand creature management from the current minimal form to editable, deletable creature records; progressively add the agreed stat-block fields and stat-block viewing.
+3. Support multiple saved parties, creatures, and encounters without autosave replacing unrelated records.
+4. Add encounter list/detail management and build encounters from a selected party and saved creatures.
+5. Keep party PC HP/AC out of the model and UI; cover this boundary in tests.
 
-## Phase 7: OCR Import
+**Exit check:** a DM can create and manage reusable local content, build an encounter from it, and reload without losing or overwriting unrelated records.
 
-40. Define an OCR adapter interface so browser and future cloud implementations share the same contract.
-41. Add a Tesseract.js import wizard with image input, progress, cancellation, and error states.
-42. Parse OCR output into an untrusted creature draft and map recognized fields into the editor.
-43. Require user review and editing before saving. Never save OCR output directly.
-44. Unit-test parsing against representative stat-block variations and malformed input.
+### Phase 2: Finish initiative and the normal combat loop
 
-## Phase 8: Offline and Operational Polish
+1. Keep PC initiative manual. Add creature `d20 + Dexterity modifier` rolls and one roll per initiative group, editable before combat begins.
+2. Define deterministic behavior for tied initiatives and validate initiative input.
+3. Complete combatant ordering, active-turn behavior, round rollover, defeated-combatant handling, and creature HP bounds in the pure combat engine.
+4. Keep creature AC visible during combat, provide stat-block access, and keep PC HP/AC clearly marked as table-tracked.
+5. Add focused tests for the transition rules and the complete prepare/start/run/reopen flow.
 
-45. Add PWA support and service-worker caching after asset and SRD-cache behavior is defined.
-46. Verify offline startup, local data access, cache updates, and graceful network recovery.
-47. Add Playwright smoke tests for stable desktop and narrow mobile workflows.
-48. Check keyboard navigation, focus handling, accessible labels, responsive sizing, and performance.
-49. Replace template documentation in `README.md` with setup instructions, MVP scope, offline behavior, attribution, and verification commands.
+**Exit check:** a DM can start and run a conventional encounter with the correct initiative behavior and without editing PC HP/AC in the app.
 
-## Deferred Work
+### Phase 3: Track boss resources
 
-50. Defer the optional Node/Express backend, cloud OCR, Dropbox sync, OneDrive sync, hosting, accounts, and multi-user features until the local application is reliable.
-51. Introduce adapter interfaces early where they protect the local-first design, but do not implement remote services in the MVP.
+1. Model creature resource definitions separately from per-encounter resource state.
+2. Initialize encounter resource state from creature definitions.
+3. Track spell slots, legendary actions, legendary resistances, and lair actions where defined.
+4. Reset round-scoped resources at the correct round boundary and test spending, bounds, and reset behavior.
+
+**Exit check:** boss resources remain encounter-specific, can be spent during combat, and reset only according to their defined timing.
+
+### Phase 4: Support dynamic combat
+
+1. Add creatures during an active encounter with quantity, initiative entry or roll, group assignment where applicable, stat-block access, and boss-resource initialization.
+2. Preserve the active combatant and correct turn progression when insertion occurs before, at, or after the active position.
+3. Add delay/resume initiative as a pure engine transition: retain original initiative, prevent acting before it, allow one re-entry per round after a selected combatant, and reset the delay state at round end.
+4. Cover insertion, delay, resume, and round-boundary cases with engine tests before connecting UI controls.
+
+**Exit check:** reinforcements and delayed combatants can be handled without corrupting the current turn or round.
+
+### Phase 5: Import and cache SRD creatures
+
+1. Define a provider boundary and implement the D&D 5e API adapter.
+2. Normalize provider data into the app's creature vocabulary without losing supported stat-block information.
+3. Cache imported SRD creatures locally and make cached content available offline.
+4. Provide explicit loading, retry, network-error, and cache states; a failed fetch must not look like a successful import.
+5. Add and verify required SRD/API attribution and licensing documentation; do not bundle non-SRD content.
+
+**Exit check:** the DM can discover/import SRD creatures while online, reuse cached content offline, and distinguish network failures from successful imports.
+
+### Phase 6: Release readiness and offline verification
+
+1. Add PWA/app-shell caching so the application can start offline after it has been installed or visited online.
+2. Verify local data access and cached SRD behavior across reloads and network loss/recovery.
+3. Improve loading, empty, validation, and persistence-error states; keep errors visible rather than silently continuing as if changes were saved.
+4. Test keyboard operation, accessible names/focus, and narrow mobile layouts; add browser smoke coverage for the core workflow.
+5. Replace template README content with project setup, first-release scope, offline behavior, attribution, and verification commands.
+
+**Release check:** offline startup and a complete prepare/run/reopen session work; core combat and persistence tests pass; SRD licensing/attribution is present.
+
+### Deferred: generators, OCR, and remote services
+
+- Encounter difficulty generation, including ruleset-specific thresholds, reskins, and suggestions.
+- Encounter environment/map generation and attachment.
+- OCR import and cloud OCR adapters.
+- Dropbox/OneDrive or other remote sync, optional server endpoints, hosting, accounts, and multiplayer.
+
+Revisit these after the local first release. Add adapter seams when they protect an agreed local-first boundary, but do not implement speculative remote services now.
 
 ## Project Organization
 
-- `src/domain/` — shared TypeScript types and validation.
-- `src/combat/` — pure combat-engine functions and tests.
-- `src/data/` — Dexie repositories, import/export, and SRD adapters.
-- `src/features/` — party, creature, encounter, generator, OCR, and run-view UI.
-- `src/App.tsx` — initial vertical slice, later reduced to the application shell.
-- `src/index.css` — responsive visual system.
-- `docs/specification.md` — requirements and target domain model.
-- `docs/plan.md` — this implementation roadmap.
+- `src/domain/` — shared domain types and validation.
+- `src/combat/` — pure combat-engine transitions and tests.
+- `src/data/` — Dexie persistence, import/export, and SRD provider/cache.
+- Feature-oriented UI modules — party, creature, encounter, and combat-run workflows as the UI grows.
+- `src/App.tsx` — application shell and composition, not the permanent home for every workflow.
+- `GLOSSARY.md` — canonical domain vocabulary.
+- `docs/specification.md` — broader requirements, including explicitly deferred capabilities.
+- `docs/plan.md` — agreed first-release implementation sequence and deferred roadmap.
 
 ## Verification Strategy
 
-1. Run `npm run lint` and `npm run build` after each foundation slice.
-2. Unit-test pure combat transitions before implementing advanced combat rules.
-3. Test HP bounds only for creatures; PC entries must remain initiative-only.
-4. Test persistence reload, empty states, failures, malformed imports, deterministic dice, and offline SRD cache behavior.
-5. Add browser coverage after routes and persistence are stable, including desktop and narrow viewport smoke tests.
-6. Manually verify keyboard use, mobile layouts, offline startup, and mandatory OCR review.
-
-## Product Decisions
-
-- MVP is one complete manually assembled local encounter workflow.
-- React state comes first; routing and a shared state library are introduced only when justified.
-- PCs keep their own HP, AC, and initiative modifiers; the app stores and displays none of them on the party record.
-- Creature HP is tracked and bounded by the creature's defined maximum.
-- Encounter generation supports both 2014 and 2024 rulesets.
-- IndexedDB is the durable local source of truth; JSON import/export comes before cloud sync.
-- No third-party or non-SRD creature content is bundled.
+1. Run the focused tests for each changed domain/data slice, then `npm test`, `npm run lint`, and `npm run build` at release milestones.
+2. Test observable combat behavior through the pure engine: initiative, ties, turn progression, defeated combatants, HP bounds, boss-resource transitions, delay/resume, and dynamic insertion.
+3. Test persistence behavior through IndexedDB: multiple records, reload, schema upgrades, backup round trips, invalid backups, and visible storage failures.
+4. Test SRD normalization, cache reuse offline, and surfaced network failures without requiring live API calls in unit tests.
+5. Add browser-level coverage for the complete prepare/start/run/reopen journey and offline app-shell behavior.
