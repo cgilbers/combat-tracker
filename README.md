@@ -22,14 +22,6 @@ This work includes material taken from the [System Reference Document 5.1 (SRD 5
 
 ## Development
 
-### Branching and pull requests
-
-- Start each issue on a new branch based on `main`.
-- Name the branch with the issue number first, followed by a short kebab-case description, for example `8-srd-creature-import-ui`.
-- Do not commit issue work directly to `main`; push the issue branch and open a pull request targeting `main`.
-
-### Checks
-
 ```bash
 npm install
 npm test -- --run
