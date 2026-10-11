@@ -1,75 +1,27 @@
-# React + TypeScript + Vite
+# Combat Tracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Combat Tracker is a local-first D&D 5e encounter manager for Dungeon Masters. It stores parties, creatures, and active encounters in IndexedDB so the app stays useful offline while still letting the DM import and reuse SRD content when online.
 
-Currently, two official plugins are available:
+## Local app workflow
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Create and manage adventuring parties and player characters.
+- Save, edit, and reuse custom creature stat blocks.
+- Start and run encounters with initiative order and HP tracking.
+- Import SRD creature data when connected and keep the cache for later offline use.
 
-## React Compiler
+## SRD data and attribution
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The app uses the public D&D 5e API as its SRD provider and normalizes the returned creature data into the app's local creature model.
 
-## Expanding the ESLint configuration
+- Source: https://www.dnd5eapi.co/api
+- Content is limited to the System Reference Document (SRD), to avoid bundling non-SRD content.
+- Imported SRD creatures are stored locally and marked with the `source: 'srd'` value so they are distinguishable from custom creatures.
+- The project maintains the required SRD/Open Gaming License attribution in this repository and does not ship or bundle copyrighted non-SRD creature content.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Development
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm test -- --run
+npm run build
 ```
