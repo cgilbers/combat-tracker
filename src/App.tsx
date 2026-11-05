@@ -348,6 +348,9 @@ function App() {
       >
         {workspace === 'combat' ? (
           <>
+            <Button onClick={() => setWorkspace('encounters')}>
+              ← Back to encounters
+            </Button>
             <div className="flex flex-wrap gap-2">
               {encounter?.status === 'active' && (
                 <>
@@ -358,9 +361,6 @@ function App() {
                 </>
               )}
             </div>
-            <Button onClick={() => setWorkspace('encounters')}>
-              ← Back to encounters
-            </Button>
           </>
         ) : (
           <>
