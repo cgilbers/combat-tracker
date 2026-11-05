@@ -1,22 +1,68 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ink: #e8e1d4;
-  --color-muted: #9d9b92;
-  --color-dim: #686a66;
-  --color-night: #151817;
-  --color-panel: #1c211f;
-  --color-line: #343936;
-  --color-lime: #d7ed67;
-  --color-orange: #ed895c;
-  --font-sans: 'Avenir Next', 'Trebuchet MS', sans-serif;
-  --font-display: Georgia, 'Times New Roman', serif;
-  --font-mono: 'SFMono-Regular', Consolas, monospace;
+  --color-ink: var(--app-ink);
+  --color-muted: var(--app-muted);
+  --color-dim: var(--app-dim);
+  --color-night: var(--app-night);
+  --color-panel: var(--app-panel);
+  --color-raised: var(--app-raised);
+  --color-input: var(--app-input);
+  --color-line: var(--app-line);
+  --color-accent: var(--app-accent);
+  --color-accent-contrast: var(--app-accent-contrast);
+  --color-accent-soft: var(--app-accent-soft);
+  --color-danger: var(--app-danger);
+  --color-highlight: var(--app-highlight);
+  --color-teal: var(--app-teal);
+  --color-grape: var(--app-grape);
+  --font-sans: 'Fira Sans', sans-serif;
+  --font-display: 'Cal Sans', sans-serif;
+  --font-hero: 'Germania One', sans-serif;
+  --font-mono: 'Fira Sans', sans-serif;
 }
 
 @layer base {
+  :root,
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+    --app-night: #0c0b16;
+    --app-panel: color-mix(in srgb, #0c0b16 94%, #fff);
+    --app-raised: color-mix(in srgb, #0c0b16 90%, #fff);
+    --app-input: color-mix(in srgb, #0c0b16 82%, #fff);
+    --app-ink: #f7f7f2;
+    --app-muted: color-mix(in srgb, #f7f7f2 72%, #0c0b16);
+    --app-dim: color-mix(in srgb, #f7f7f2 50%, #0c0b16);
+    --app-line: color-mix(in srgb, #0c0b16 75%, #fff);
+    --app-accent: #db2d31;
+    --app-accent-contrast: #ffffff;
+    --app-accent-soft: color-mix(in srgb, #0c0b16 88%, #db2d31);
+    --app-danger: #db2d31;
+    --app-highlight: #6c6ea0;
+    --app-teal: #3aafb9;
+    --app-grape: #6c6ea0;
+  }
+
+  :root[data-theme='light'] {
+    color-scheme: light;
+    --app-night: #f7f7f2;
+    --app-panel: #fff;
+    --app-raised: color-mix(in srgb, #fff 90%, #0c0b16);
+    --app-input: color-mix(in srgb, #fff 96%, #0c0b16);
+    --app-ink: #0c0b16;
+    --app-muted: color-mix(in srgb, #0c0b16 72%, #f7f7f2);
+    --app-dim: color-mix(in srgb, #0c0b16 50%, #f7f7f2);
+    --app-line: color-mix(in srgb, #f7f7f2 75%, #0c0b16);
+    --app-accent: #db2d31;
+    --app-accent-contrast: #ffffff;
+    --app-accent-soft: color-mix(in srgb, #fff 88%, #db2d31);
+    --app-danger: #db2d31;
+    --app-highlight: #6c6ea0;
+    --app-teal: #3aafb9;
+    --app-grape: #6c6ea0;
+  }
+
   html {
-    color-scheme: light dark;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -25,7 +71,9 @@
   body {
     @apply m-0 min-h-screen bg-night font-sans text-[15px] leading-[1.45] text-ink;
   }
+}
 
+@layer base {
   #root {
     @apply min-h-screen;
   }

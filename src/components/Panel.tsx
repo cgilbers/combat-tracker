@@ -5,12 +5,6 @@ type PanelProps = HTMLAttributes<HTMLElement> & {
   variant?: 'default' | 'builder' | 'combat'
 }
 
-const variantClasses = {
-  default: 'border-line bg-panel p-5 sm:p-6',
-  builder: 'border-line bg-[#222923] p-5 sm:p-6',
-  combat: 'min-h-[30rem] border-line bg-[#171b19] p-5 sm:min-h-[38.75rem] sm:p-[30px]',
-}
-
 export function Panel({
   as: Element = 'section',
   variant = 'default',
@@ -19,7 +13,9 @@ export function Panel({
 }: PanelProps) {
   return (
     <Element
-      className={`border ${variantClasses[variant]} ${className}`}
+      className={`rounded-lg border border-line p-5 shadow-sm shadow-night/10 sm:p-6 ${
+        variant === 'builder' ? 'bg-raised' : 'bg-panel'
+      } ${className}`}
       {...props}
     />
   )

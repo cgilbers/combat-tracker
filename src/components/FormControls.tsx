@@ -4,6 +4,7 @@ import type {
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from 'react'
+import { ChevronDown } from 'lucide-react'
 
 type FieldLabelProps = LabelHTMLAttributes<HTMLLabelElement>
 
@@ -17,7 +18,7 @@ export function FieldLabel({ className = '', ...props }: FieldLabelProps) {
 }
 
 const controlClasses =
-  'box-border w-full border border-line bg-[#161a18] px-3 py-2.5 font-sans text-sm text-ink normal-case tracking-normal outline-none placeholder:text-dim focus:border-lime'
+  'box-border w-full rounded-md border border-line bg-input px-3 py-2.5 font-sans text-sm text-ink normal-case tracking-normal outline-none placeholder:text-dim focus:border-accent'
 
 type InputProps = InputHTMLAttributes<HTMLInputElement>
 
@@ -28,7 +29,18 @@ export function TextInput({ className = '', ...props }: InputProps) {
 type SelectProps = SelectHTMLAttributes<HTMLSelectElement>
 
 export function SelectInput({ className = '', ...props }: SelectProps) {
-  return <select className={`${controlClasses} ${className}`} {...props} />
+  return (
+    <span className="relative block w-full">
+      <select
+        className={`${controlClasses} appearance-none pr-10 ${className}`}
+        {...props}
+      />
+      <ChevronDown
+        aria-hidden="true"
+        className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted"
+      />
+    </span>
+  )
 }
 
 type TextAreaProps = TextareaHTMLAttributes<HTMLTextAreaElement>

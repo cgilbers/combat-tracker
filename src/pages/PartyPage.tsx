@@ -68,7 +68,7 @@ export function PartyPage({
   return (
     <Panel>
       <SectionHeading
-        step="01 / PARTY"
+        step="PARTY"
         title="Who is adventuring?"
         count={`${party?.members.length ?? 0} PCs`}
       />

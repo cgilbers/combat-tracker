@@ -1,4 +1,5 @@
-import { useState, type ChangeEvent } from 'react'
+import { useEffect, useState, type ChangeEvent } from 'react'
+import { Moon, Sun } from 'lucide-react'
 import {
   activateEncounter,
   addCreatureGroup,
@@ -21,10 +22,15 @@ import { EncounterPage } from './pages/EncounterPage'
 import { PartyPage } from './pages/PartyPage'
 
 type Workspace = 'parties' | 'creatures' | 'encounters' | 'combat'
+type Theme = 'dark' | 'light'
+const THEME_STORAGE_KEY = 'combat-tracker-theme'
 const createId = () => crypto.randomUUID()
 
 function App() {
   const [workspace, setWorkspace] = useState<Workspace>('encounters')
+  const [theme, setTheme] = useState<Theme>(() =>
+    window.localStorage.getItem(THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark',
+  )
   const [selectedEncounterId, setSelectedEncounterId] = useState('')
   const {
     parties,
@@ -43,6 +49,11 @@ function App() {
     exportBackup,
     importBackup,
   } = useAppData()
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+  }, [theme])
+
   const effectiveEncounterId = encounters.some(
     (item) => item.id === selectedEncounterId,
   )
@@ -207,71 +218,104 @@ function App() {
   const activeCombatant = encounter?.combatants[encounter.currentTurnIndex]
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12 lg:px-12">
-      <header className="mb-8 flex items-start justify-between gap-6 border-b border-line pb-7 sm:mb-10">
-        <div>
-          <p className="mb-2 font-mono text-[11px] tracking-[1.1px] text-lime">FIELD NOTES / 01</p>
-          <h1 className="font-display text-4xl leading-tight font-medium text-ink sm:text-5xl">
-            Initiative, at a glance.
-          </h1>
-          <p className="mt-3 max-w-lg text-sm text-muted">
-            A quiet command deck for the messy middle of a fight.
-          </p>
-        </div>
-        {workspace === 'combat' && (
-          <div className="grid size-16 shrink-0 content-center justify-items-center border border-line sm:size-20">
-            <span className="font-mono text-[10px] tracking-[1px] text-muted">ROUND</span>
-            <strong className="font-display text-2xl font-normal text-lime">
-              {encounter?.status === 'active' ? encounter.round : '—'}
-            </strong>
-          </div>
-        )}
-      </header>
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <span
-          role={storageError ? 'alert' : 'status'}
-          className={`mr-auto font-mono text-[10px] tracking-[.7px] ${
-            storageError ? 'text-orange' : 'text-muted'
-          }`}
-        >
-          {storageError || (isHydrated ? 'SAVED LOCALLY' : 'LOADING SAVED DATA')}
-        </span>
-        <Button onClick={exportData} disabled={!isHydrated}>Export JSON</Button>
-        <label className="cursor-pointer border border-line bg-transparent px-3 py-2 font-mono text-[10px] text-muted transition-colors hover:border-lime hover:text-lime">
-          Import JSON
-          <input
-            type="file"
-            className="sr-only"
-            accept="application/json,.json"
-            onChange={importData}
-            disabled={!isHydrated}
-          />
-        </label>
-      </div>
-      <nav aria-label="Main workspaces" className="mb-6 flex flex-wrap gap-2 border-b border-line pb-3">
-        {([
-          ['parties', 'Parties'],
-          ['creatures', 'Creature Library'],
-          ['encounters', 'Encounters'],
-        ] as const).map(([id, label]) => (
-          <Button
-            key={id}
-            variant={workspace === id ? 'primary' : 'secondary'}
-            aria-pressed={workspace === id}
-            onClick={() => setWorkspace(id)}
-          >
-            {label}
-          </Button>
-        ))}
-      </nav>
-      <section
-        className={`grid grid-cols-1 items-start gap-5 ${
-          workspace === 'combat'
-            ? 'xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]'
-            : ''
+    <main
+      className={`mx-auto flex w-full max-w-7xl flex-col px-4 sm:px-8 lg:px-12 ${
+        workspace === 'combat'
+          ? 'h-dvh min-h-0 overflow-hidden py-3 sm:py-4'
+          : 'min-h-screen py-6 sm:py-8'
+      }`}
+    >
+      <header
+        className={`flex shrink-0 items-center justify-between gap-4 border-b border-line pb-3 ${
+          workspace === 'combat' ? 'mb-3' : 'mb-5'
         }`}
       >
-        <div className="space-y-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <h1 className="truncate font-display text-2xl font-medium text-ink">
+            {workspace === 'combat' ? encounter?.name ?? 'Combat Tracker' : 'Combat Tracker'}
+          </h1>
+          {workspace === 'combat' && encounter?.status === 'active' && (
+            <span className="flex shrink-0 items-center gap-2 font-mono text-[10px] tracking-[1px] text-accent">
+              <i className="size-2 rounded-full bg-accent" /> LIVE
+            </span>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {workspace === 'combat' && (
+            <div className="grid size-16 content-center justify-items-center border border-line sm:size-20">
+              <span className="font-mono text-[10px] tracking-[1px] text-muted">ROUND</span>
+              <strong className="font-display text-2xl font-normal text-accent">
+                {encounter?.status === 'active' ? encounter.round : '—'}
+              </strong>
+            </div>
+          )}
+          <Button
+            variant="secondary"
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          >
+            {theme === 'dark' ? (
+              <Sun aria-hidden="true" className="size-4" />
+            ) : (
+              <Moon aria-hidden="true" className="size-4" />
+            )}
+          </Button>
+        </div>
+      </header>
+      {(workspace !== 'combat' || storageError) && (
+        <div className="mb-6 flex flex-wrap items-center gap-3">
+          <span
+            role={storageError ? 'alert' : 'status'}
+            className={`mr-auto font-mono text-[10px] tracking-[.7px] ${
+              storageError ? 'text-danger' : 'text-muted'
+            }`}
+          >
+            {storageError || (isHydrated ? 'SAVED LOCALLY' : 'LOADING SAVED DATA')}
+          </span>
+          {workspace !== 'combat' && (
+            <>
+              <Button onClick={exportData} disabled={!isHydrated}>Export JSON</Button>
+              <label className="cursor-pointer rounded-md border border-line bg-transparent px-3 py-2 font-sans text-xs font-medium text-muted transition-colors hover:border-accent hover:text-accent">
+                Import JSON
+                <input
+                  type="file"
+                  className="sr-only"
+                  accept="application/json,.json"
+                  onChange={importData}
+                  disabled={!isHydrated}
+                />
+              </label>
+            </>
+          )}
+        </div>
+      )}
+      {workspace !== 'combat' && (
+        <nav aria-label="Main workspaces" className="mb-6 flex flex-wrap gap-2 border-b border-line pb-3">
+          {([
+            ['parties', 'Parties'],
+            ['creatures', 'Creature Library'],
+            ['encounters', 'Encounters'],
+          ] as const).map(([id, label]) => (
+            <Button
+              key={id}
+              variant={workspace === id ? 'primary' : 'secondary'}
+              aria-pressed={workspace === id}
+              onClick={() => setWorkspace(id)}
+            >
+              {label}
+            </Button>
+          ))}
+        </nav>
+      )}
+      <section
+        className={`grid grid-cols-1 gap-5 ${
+          workspace === 'combat'
+            ? 'grid-rows-[minmax(0,1fr)] min-h-0 flex-1 items-stretch overflow-hidden'
+            : 'items-start'
+        }`}
+      >
+        <div className="space-y-5" hidden={workspace === 'combat'}>
           <div hidden={workspace !== 'parties'}>
             <PartyPage
               parties={parties}
@@ -309,22 +353,46 @@ function App() {
             />
           </div>
         </div>
-        <div hidden={workspace !== 'combat'}>
+        <div
+          className={workspace === 'combat' ? 'min-h-0 overflow-hidden' : ''}
+          hidden={workspace !== 'combat'}
+        >
           <CombatPage
             encounter={encounter}
             activeCombatantName={activeCombatant?.name}
+            activeCombatantInitiative={activeCombatant?.initiative}
             onNextTurn={advanceTurn}
-            onPause={pauseSelectedEncounter}
-            onComplete={finishEncounter}
             onAdjustCreatureHp={adjustCreatureHp}
-            onBackToEncounters={() => setWorkspace('encounters')}
           />
         </div>
       </section>
-      <footer className="mt-8 flex flex-wrap justify-between gap-3 border-t border-line pt-4 font-mono text-[9px] tracking-[.8px] text-dim">
-        <span>LOCAL SESSION</span>
-        <span>NO CLOUD / NO DISTRACTIONS</span>
-        <span>COMBAT TRACKER MVP</span>
+      <footer
+        className={`flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-line pt-3 font-mono text-[9px] tracking-[.8px] ${
+          workspace === 'combat' ? 'mt-3' : 'mt-8 text-dim'
+        }`}
+      >
+        {workspace === 'combat' ? (
+          <>
+            <Button onClick={() => setWorkspace('encounters')}>
+              ← Back to encounters
+            </Button>
+            <div className="flex flex-wrap gap-2">
+              {encounter?.status === 'active' && (
+                <>
+                  <Button onClick={pauseSelectedEncounter}>Pause</Button>
+                  <Button variant="danger" onClick={finishEncounter}>
+                    Complete
+                  </Button>
+                </>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <span>COMBAT TRACKER MVP</span>
+            <span>by cgilbers</span>
+          </>
+        )}
       </footer>
     </main>
   )
