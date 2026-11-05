@@ -10,6 +10,9 @@ The app is DM-first and local-first. It does not require accounts, a backend, cl
 
 - PCs have names and notes in the party; the app tracks their encounter initiative, but not their HP or AC. Those remain at the table.
 - An unstarted encounter has no party association and contains no PCs. At the moment combat begins, the DM chooses a party and enters PC initiative; the party members are copied into the started encounter. Deleting or editing the source party does not alter an already-started encounter.
+- Creature creation and editing are independent of encounter creation. Encounters are named Drafts assembled from already-saved creatures, and capture a full creature-data snapshot the first time each creature type is added. Additional groups of that type reuse the encounter snapshot; library edits or deletion do not change existing encounters.
+- Encounter-specific creature stat editing is a separate workflow and changes only that encounter's snapshot. Creature groups have a creature type, quantity, and shared initiative; each member remains an individual combatant with separate HP.
+- Creature Library, Encounter preparation, and Combat are separate top-level workspaces. Encounters transition Draft → Active → Paused → Complete in the same saved record; at most one encounter is Active, switching runs pauses the previous one, and reload restores an Active run as Paused. Completed encounters remain history and can be duplicated into a fresh Draft with the same snapshots and composition but no run state.
 - Creatures have app-managed combat statistics and HP. Creature initiative can be rolled automatically, with group initiative supported; the DM can edit results before combat starts.
 - The combat rules engine is pure TypeScript, independent of React and persistence.
 - IndexedDB is the durable local source of truth. The app remains useful offline; SRD data fetched while online is cached locally.
@@ -23,14 +26,14 @@ The repository already contains a working single-screen vertical slice rather th
 
 | Area | Present now | Gap to the agreed release |
 | --- | --- | --- |
-| Party | Multiple parties can be created, selected, renamed, and deleted; PCs can be added, edited, and removed with notes. | Dedicated party management views and richer validation remain future work. |
+| Party | A separate Parties workspace supports creating, selecting, renaming, and deleting multiple parties; PCs can be added, edited, and removed with notes. | A persisted current-campaign party default for new encounters is tracked separately in #13. |
 | Creatures | A reusable custom creature library supports create, view, edit, and delete across SRD-aligned fields, with custom/SRD source represented. | SRD provider import and full combat use of all stat-block/resource fields remain separate work. |
-| Encounter setup | One selected creature can be added at a bounded quantity alongside party members. | Encounter listing/management, groups, and SRD selection are missing. |
-| Combat | Manual initiative, descending sort, turn advance, round rollover, creature damage/healing, and defeated state exist. | Creature auto-roll/group initiative, boss resources, delay/resume, mid-combat additions, and broader edge-case rules are missing. |
-| Persistence | Dexie stores parties, creatures, and the active encounter; version-1 JSON backup import/export exists. Creature edits and deletes persist as individual records. | Multiple encounter management, migration, and reload coverage remain limited. |
-| Tests | Vitest covers basic combat order/turn/HP behavior and database backup operations. | Broader domain, persistence-reload, import, error, and UI workflows need coverage. |
+| Encounter setup | A separate workspace creates named Drafts, composes distinct saved-creature groups, captures full creature snapshots, and supports quantity and shared initiative editing. | Encounter-specific creature stat editing is intentionally deferred. |
+| Combat | A separate workspace starts, advances, pauses, resumes, and completes encounters; starting or resuming another run pauses the current one. | Creature auto-roll/group initiative, boss resources, delay/resume, and broader edge-case rules remain. |
+| Persistence | Dexie schema version 2 migrates legacy encounters; encounter snapshots and groups persist; version-2 backups import version-1 data; reload converts Active runs to Paused. | Broader reload, error-state, and backup round-trip coverage remain. |
+| Tests | Vitest covers encounter groups and snapshots, lifecycle transitions, active-run exclusivity, IndexedDB migration, and legacy backup conversion in addition to the basic combat loop. | Browser-level prepare/start/pause/resume/reopen workflows and storage-failure UI coverage remain. |
 | Offline UX | App data is stored locally and the UI is styled for combat use. | No PWA/service-worker support or verified offline app-shell startup is present. |
-| Architecture | Types, combat logic, and database code are separated. | `App.tsx` currently owns setup, combat, persistence orchestration, and import/export UI; split by workflow as features grow. |
+| Architecture | Types, combat logic, database code, and Creature Library UI are separated; the app exposes distinct Parties, Creature Library, Encounters, and Combat workspaces. | `App.tsx` still orchestrates workspace state, parties, persistence, and backup UI; split workflow orchestration further as features grow. |
 
 The existing implementation aligns with the agreed local-first core and demonstrates a useful combat loop. The old plan did not fully align: it postponed SRD import and advanced combat beyond the agreed first release, and treated PC initiative-only behavior as an unconfirmed assumption. The PC policy is now resolved as stated above.
 
@@ -42,19 +45,22 @@ Work in independently verifiable slices. Preserve the existing working flow whil
 
 1. Expand party and PC management to support the agreed name-and-notes data, with create, edit, and delete behavior.
 2. Expand creature management from the current minimal form to editable, deletable creature records with the agreed stat-block fields and stat-block viewing.
-3. Support multiple saved parties, creatures, and encounters without autosave replacing unrelated records.
-4. Add encounter list/detail management and build encounters from a selected party and saved creatures.
-5. Keep party PC HP/AC out of the model and UI; cover this boundary in tests.
+3. Keep Creature Library, Encounter preparation, and Combat as separate top-level workspaces.
+4. Create named Draft encounters first; build them from saved creatures using encounter-local snapshots and distinct creature groups with quantity and shared initiative.
+5. Support editing/removing groups, party selection at combat start, and encounter-specific creature snapshots independent of later library changes or deletion.
+6. Support multiple saved parties, creatures, and encounters without autosave replacing unrelated records; migrate existing local data and preserve backup compatibility.
+7. Keep party PC HP/AC out of the model and UI; cover this boundary in tests.
 
-**Exit check:** a DM can create and manage reusable local content, build an encounter from it, and reload without losing or overwriting unrelated records.
+**Exit check:** a DM can create reusable creatures independently, prepare and edit a saved encounter from creature snapshots, and reload without losing or overwriting unrelated records.
 
 ### Phase 2: Finish initiative and the normal combat loop
 
-1. Keep PC initiative manual. Add creature `d20 + Dexterity modifier` rolls and one roll per initiative group, editable before combat begins.
+1. Keep PC initiative manual. Add creature `d20 + Dexterity modifier` rolls and one roll per creature group, editable before combat begins.
 2. Define deterministic behavior for tied initiatives and validate initiative input.
-3. Complete combatant ordering, active-turn behavior, round rollover, defeated-combatant handling, and creature HP bounds in the pure combat engine.
-4. Keep creature AC visible during combat, provide stat-block access, and keep PC HP/AC clearly marked as table-tracked.
-5. Add focused tests for the transition rules and the complete prepare/start/run/reopen flow.
+3. Complete encounter lifecycle transitions, including one active run, pause/resume, completion, reload-to-paused, and duplication of completed encounters.
+4. Complete combatant ordering, active-turn behavior, round rollover, defeated-combatant handling, and creature HP bounds in the pure combat engine.
+5. Keep creature AC visible during combat, provide access to the encounter's creature snapshot, and keep PC HP/AC clearly marked as table-tracked.
+6. Add focused tests for the transition rules and the complete prepare/start/run/pause/resume/reopen flow.
 
 **Exit check:** a DM can start and run a conventional encounter with the correct initiative behavior and without editing PC HP/AC in the app.
 

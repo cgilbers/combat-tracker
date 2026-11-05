@@ -1,25 +1,39 @@
 import { describe, expect, it } from 'vitest'
-import { nextTurn, startEncounter, updateCreatureHp } from './engine'
-import type { Encounter } from '../domain/types'
+import {
+  activateEncounter,
+  addCreatureGroup,
+  completeEncounter,
+  createDraftEncounter,
+  duplicateEncounter,
+  nextTurn,
+  pauseEncounter,
+  removeCreatureGroup,
+  startEncounter,
+  updateCreatureGroup,
+  updateCreatureHp,
+} from './engine'
+import type { Creature, Encounter } from '../domain/types'
+
+const creature: Creature = {
+  id: 'creature-1',
+  source: 'custom',
+  name: 'Ash Wyrmling',
+  ac: 13,
+  hpAverage: 10,
+  dexterityModifier: 1,
+}
 
 const encounter: Encounter = {
   id: 'encounter-1',
   name: 'Test encounter',
-  combatants: [
-    {
-      id: 'creature-1',
-      type: 'creature',
-      refId: 'creature-1',
-      name: 'Ash Wyrmling',
-      initiative: 18,
-      currentHp: 10,
-      maxHp: 10,
-      ac: 13,
-    },
+  status: 'draft',
+  creatureGroups: [
+    { id: 'group-1', creatureId: creature.id, quantity: 1, initiative: 18 },
   ],
+  creatureSnapshots: { [creature.id]: creature },
+  combatants: [],
   round: 1,
   currentTurnIndex: 0,
-  isStarted: false,
 }
 
 const party = {
@@ -32,7 +46,81 @@ const startTestEncounter = (value: Encounter = encounter) =>
   startEncounter(value, party, { 'pc-1': 12 }, () => 'combatant-pc-1')
 
 describe('combat engine', () => {
-  it('adds the selected party when combat starts without adding PC HP or AC', () => {
+  it('creates a named draft encounter without run state', () => {
+    expect(createDraftEncounter('encounter-new', '  Watchtower  ')).toEqual({
+      id: 'encounter-new',
+      name: 'Watchtower',
+      status: 'draft',
+      creatureGroups: [],
+      creatureSnapshots: {},
+      combatants: [],
+      round: 1,
+      currentTurnIndex: 0,
+    })
+  })
+
+  it('adds different creature types as separate groups and snapshots each type', () => {
+    const goblin: Creature = {
+      id: 'goblin',
+      source: 'custom',
+      name: 'Goblin',
+      ac: 15,
+      hpAverage: 7,
+      dexterityModifier: 2,
+    }
+    const ogre: Creature = {
+      id: 'ogre',
+      source: 'custom',
+      name: 'Ogre',
+      ac: 11,
+      hpAverage: 59,
+      dexterityModifier: -1,
+    }
+
+    let id = 0
+    const createId = () => `combatant-${id++}`
+    const emptyEncounter = createDraftEncounter('new-encounter', 'Mixed group')
+    const withGoblins = addCreatureGroup(emptyEncounter, goblin, 2, createId)
+    const withOgre = addCreatureGroup(withGoblins, ogre, 1, createId)
+
+    expect(withOgre.creatureGroups.map(({ creatureId, quantity }) => ({
+      creatureId,
+      quantity,
+    }))).toEqual([
+      { creatureId: 'goblin', quantity: 2 },
+      { creatureId: 'ogre', quantity: 1 },
+    ])
+    expect(withOgre.creatureSnapshots).toEqual({ goblin, ogre })
+  })
+
+  it('reuses the encounter snapshot when adding the same creature after library changes', () => {
+    const goblin: Creature = {
+      id: 'goblin',
+      source: 'custom',
+      name: 'Goblin',
+      ac: 15,
+      hpAverage: 7,
+      dexterityModifier: 2,
+    }
+
+    const first = addCreatureGroup(createDraftEncounter('draft', 'Draft'), goblin, 1, () => 'g1')
+    const changedGoblin = { ...goblin, name: 'Goblin Chief', hpAverage: 20 }
+    const updated = addCreatureGroup(first, changedGoblin, 2, () => 'g2')
+
+    expect(updated.creatureGroups).toHaveLength(2)
+    expect(updated.creatureSnapshots.goblin).toEqual(goblin)
+  })
+
+  it('updates and removes creature groups while preserving per-creature quantity rules', () => {
+    const withSecondGroup = addCreatureGroup(encounter, creature, 2, () => 'group-2')
+    const resized = updateCreatureGroup(withSecondGroup, 'group-2', { quantity: 5 })
+    const removed = removeCreatureGroup(resized, 'group-1')
+
+    expect(resized.creatureGroups[1].quantity).toBe(5)
+    expect(removed.creatureGroups.map((group) => group.id)).toEqual(['group-2'])
+  })
+
+  it('starts combat by creating individual creature combatants and copying PCs', () => {
     const started = startTestEncounter()
 
     expect(started.combatants.map((combatant) => combatant.name)).toEqual([
@@ -41,6 +129,7 @@ describe('combat engine', () => {
     ])
     expect(started.currentTurnIndex).toBe(0)
     expect(started.partyId).toBe('party-1')
+    expect(started.status).toBe('active')
     expect(started.combatants[1]).toEqual({
       id: 'combatant-pc-1',
       type: 'pc',
@@ -50,8 +139,41 @@ describe('combat engine', () => {
     })
   })
 
-  it('does not add party members to an encounter before it starts', () => {
-    expect(encounter.combatants).toHaveLength(1)
+  it('gives each creature group a shared initiative and individual HP', () => {
+    const firstGroup = { ...encounter, creatureGroups: [{ ...encounter.creatureGroups[0], quantity: 2 }] }
+    const secondGroup = addCreatureGroup(firstGroup, creature, 1, () => 'group-2')
+    const withInitiative = updateCreatureGroup(
+      updateCreatureGroup(secondGroup, 'group-1', { initiative: 16 }),
+      'group-2',
+      { initiative: 9 },
+    )
+    const started = startEncounter(
+      withInitiative,
+      party,
+      { 'pc-1': 12 },
+      (() => {
+        let id = 0
+        return () => `run-${id++}`
+      })(),
+    )
+    const creatureCombatants = started.combatants.filter(
+      (combatant) => combatant.type === 'creature',
+    )
+    const damaged = updateCreatureHp(started, creatureCombatants[0].id, -5)
+
+    expect(creatureCombatants.map((combatant) => combatant.initiative)).toEqual([
+      16,
+      16,
+      9,
+    ])
+    expect(new Set(creatureCombatants.map((combatant) => combatant.groupId)).size).toBe(2)
+    expect(damaged.combatants.filter((combatant) => combatant.type === 'creature').map(
+      (combatant) => combatant.currentHp,
+    )).toEqual([5, 10, 10])
+  })
+
+  it('does not add combatants to a draft before it starts', () => {
+    expect(encounter.combatants).toHaveLength(0)
     expect(encounter.partyId).toBeUndefined()
   })
 
@@ -59,6 +181,12 @@ describe('combat engine', () => {
     expect(() =>
       startEncounter(encounter, party, {}, () => 'combatant-pc-1'),
     ).toThrow('Initiative is required for Mira.')
+  })
+
+  it('rejects starting without a PC party member', () => {
+    expect(() =>
+      startEncounter(encounter, { ...party, members: [] }, {}, () => 'unused'),
+    ).toThrow('Choose a party with at least one player character before starting.')
   })
 
   it('advances turns and increments the round after wrapping', () => {
@@ -73,21 +201,22 @@ describe('combat engine', () => {
 
   it('clamps creature HP and marks a creature defeated at zero', () => {
     const started = startTestEncounter()
-    const damaged = updateCreatureHp(started, 'creature-1', -17)
-    const healed = updateCreatureHp(damaged, 'creature-1', 99)
+    const creatureId = started.combatants.find((combatant) => combatant.type === 'creature')!.id
+    const damaged = updateCreatureHp(started, creatureId, -17)
+    const healed = updateCreatureHp(damaged, creatureId, 99)
 
-    expect(damaged.combatants[0].currentHp).toBe(0)
-    expect(damaged.combatants[0].isDefeated).toBe(true)
-    expect(healed.combatants[0].currentHp).toBe(10)
-    expect(healed.combatants[0].isDefeated).toBe(false)
+    const damagedCreature = damaged.combatants.find((combatant) => combatant.id === creatureId)
+    const healedCreature = healed.combatants.find((combatant) => combatant.id === creatureId)
+    expect(damagedCreature?.currentHp).toBe(0)
+    expect(damagedCreature?.isDefeated).toBe(true)
+    expect(healedCreature?.currentHp).toBe(10)
+    expect(healedCreature?.isDefeated).toBe(false)
   })
 
   it('does not add HP or AC to PC combatants', () => {
     const started = startTestEncounter()
     const updated = updateCreatureHp(started, 'combatant-pc-1', -4)
-    const updatedPc = updated.combatants.find(
-      (combatant) => combatant.id === 'combatant-pc-1',
-    )
+    const updatedPc = updated.combatants.find((combatant) => combatant.type === 'pc')
 
     expect(updatedPc).toEqual({
       id: 'combatant-pc-1',
@@ -98,5 +227,40 @@ describe('combat engine', () => {
     })
     expect(updatedPc).not.toHaveProperty('currentHp')
     expect(updatedPc).not.toHaveProperty('ac')
+  })
+
+  it('pauses and resumes encounters while allowing only one active run', () => {
+    const first = startTestEncounter()
+    const second = startEncounter(
+      { ...encounter, id: 'encounter-2' },
+      party,
+      { 'pc-1': 11 },
+      () => 'second-combatant',
+    )
+    const pausedFirst = pauseEncounter(first)
+    const activeEncounters = activateEncounter([pausedFirst, second], first.id)
+
+    expect(activeEncounters.map((item) => item.status)).toEqual(['active', 'paused'])
+  })
+
+  it('completes and duplicates an encounter without carrying run state', () => {
+    const completed = completeEncounter(startTestEncounter())
+    let id = 0
+    const duplicate = duplicateEncounter(completed, () => `duplicate-${id++}`)
+
+    expect(completed.status).toBe('complete')
+    expect(duplicate).toMatchObject({
+      status: 'draft',
+      partyId: undefined,
+      combatants: [],
+      round: 1,
+      currentTurnIndex: 0,
+    })
+    expect(duplicate.creatureSnapshots).toEqual(completed.creatureSnapshots)
+    expect(duplicate.creatureGroups[0]).toMatchObject({
+      creatureId: creature.id,
+      quantity: 1,
+      initiative: null,
+    })
   })
 })

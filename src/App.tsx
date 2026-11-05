@@ -1,5 +1,17 @@
 import { useEffect, useState } from 'react'
-import { nextTurn, startEncounter, updateCreatureHp } from './combat/engine'
+import {
+  activateEncounter,
+  addCreatureGroup,
+  completeEncounter,
+  createDraftEncounter,
+  duplicateEncounter as duplicateEncounterRecord,
+  nextTurn,
+  pauseEncounter,
+  removeCreatureGroup,
+  startEncounter,
+  updateCreatureGroup,
+  updateCreatureHp,
+} from './combat/engine'
 import { Button } from './components/Button'
 import { CountBadge } from './components/CountBadge'
 import { FieldLabel, SelectInput, TextInput } from './components/FormControls'
@@ -15,15 +27,17 @@ import {
   loadAppData,
   parseBackup,
   restoreBackup,
+  saveAppData,
   saveCreature,
-  saveEncounter,
   saveParty,
 } from './data/database'
 import type { Creature, Encounter, Party } from './domain/types'
 
 const createId = () => crypto.randomUUID()
+type Workspace = 'parties' | 'creatures' | 'encounters' | 'combat'
 
 function App() {
+  const [workspace, setWorkspace] = useState<Workspace>('encounters')
   const [parties, setParties] = useState<Party[]>([])
   const [selectedPartyId, setSelectedPartyId] = useState('')
   const [launchPartyId, setLaunchPartyId] = useState('')
@@ -36,12 +50,12 @@ function App() {
   const [encounterName, setEncounterName] = useState('The Old Watchtower')
   const [encounters, setEncounters] = useState<Encounter[]>([])
   const [selectedEncounterId, setSelectedEncounterId] = useState('')
-  const [encounter, setEncounter] = useState<Encounter | null>(null)
   const [hpAdjustment, setHpAdjustment] = useState('1')
   const [isHydrated, setIsHydrated] = useState(false)
   const [storageError, setStorageError] = useState('')
   const party = parties.find((item) => item.id === selectedPartyId) ?? null
   const launchParty = parties.find((item) => item.id === launchPartyId) ?? null
+  const encounter = encounters.find((item) => item.id === selectedEncounterId) ?? null
 
   useEffect(() => {
     let isCancelled = false
@@ -54,9 +68,11 @@ function App() {
         setLaunchPartyId(data.parties[0]?.id ?? '')
         setCreatures(data.creatures)
         setEncounters(data.encounters)
-        const firstEncounter = data.encounters[0] ?? null
-        setSelectedEncounterId(firstEncounter?.id ?? '')
-        setEncounter(firstEncounter)
+        const selectedEncounter =
+          data.encounters.find((item) => item.status === 'paused') ??
+          data.encounters[0] ??
+          null
+        setSelectedEncounterId(selectedEncounter?.id ?? '')
       })
       .catch(() => {
         if (!isCancelled) setStorageError('Saved data could not be loaded. You can continue in memory.')
@@ -81,22 +97,14 @@ function App() {
   }, [party, isHydrated])
 
   useEffect(() => {
-    if (!isHydrated || !encounter) return
+    if (!isHydrated) return
 
-    saveEncounter(encounter)
-      .then(() => {
-        setEncounters((currentEncounters) => {
-          const exists = currentEncounters.some((item) => item.id === encounter.id)
-          return exists
-            ? currentEncounters.map((item) => (item.id === encounter.id ? encounter : item))
-            : [...currentEncounters, encounter]
-        })
-        setStorageError('')
-      })
+    saveAppData({ encounters })
+      .then(() => setStorageError(''))
       .catch(() => {
         setStorageError('Encounter changes could not be saved locally.')
       })
-  }, [encounter, isHydrated])
+  }, [encounters, isHydrated])
 
   const createParty = () => {
     const newParty: Party = {
@@ -200,104 +208,138 @@ function App() {
     }
   }
 
-  const buildEncounter = () => {
-    const creature = creatures.find((item) => item.id === selectedCreatureId)
-    if (!creature) return
-
-    const quantity = Math.min(Math.max(Number(creatureQuantity) || 1, 1), 12)
-    const creatureCombatants = Array.from({ length: quantity }, (_, index) => ({
-      id: createId(),
-      type: 'creature' as const,
-      refId: creature.id,
-      name: quantity > 1 ? `${creature.name} ${index + 1}` : creature.name,
-      initiative: null,
-      currentHp: creature.hpAverage,
-      maxHp: creature.hpAverage,
-      ac: creature.ac,
-    }))
-
-    const nextEncounter: Encounter = {
-      id: createId(),
-      name: encounterName.trim() || 'Unnamed encounter',
-      combatants: creatureCombatants,
-      round: 1,
-      currentTurnIndex: 0,
-      isStarted: false,
-    }
-
-    setSelectedEncounterId(nextEncounter.id)
-    setEncounter(nextEncounter)
+  const createEncounterDraft = () => {
+    const newEncounter = createDraftEncounter(
+      createId(),
+      encounterName.trim() || `New encounter ${encounters.length + 1}`,
+    )
+    setEncounters((currentEncounters) => [...currentEncounters, newEncounter])
+    setSelectedEncounterId(newEncounter.id)
     setPcInitiatives({})
+  }
+
+  const updateEncounter = (updatedEncounter: Encounter) => {
+    setEncounters((currentEncounters) =>
+      currentEncounters.map((item) =>
+        item.id === updatedEncounter.id ? updatedEncounter : item,
+      ),
+    )
+  }
+
+  const addCreatureToEncounter = () => {
+    const creature = creatures.find((item) => item.id === selectedCreatureId)
+    if (!encounter || encounter.status !== 'draft' || !creature) return
+
+    updateEncounter(
+      addCreatureGroup(encounter, creature, Number(creatureQuantity), createId),
+    )
+  }
+
+  const updateCreatureQuantity = (groupId: string, value: string) => {
+    if (!encounter) return
+    updateEncounter(
+      updateCreatureGroup(encounter, groupId, { quantity: Number(value) }),
+    )
+  }
+
+  const updateGroupInitiative = (groupId: string, value: string) => {
+    if (!encounter) return
+    updateEncounter(
+      updateCreatureGroup(encounter, groupId, {
+        initiative: value === '' ? null : Number(value),
+      }),
+    )
+  }
+
+  const removeGroup = (groupId: string) => {
+    if (!encounter) return
+    updateEncounter(removeCreatureGroup(encounter, groupId))
   }
 
   const selectEncounter = (nextEncounter: Encounter) => {
     setSelectedEncounterId(nextEncounter.id)
-    setEncounter(nextEncounter)
     setPcInitiatives({})
   }
 
   const deleteEncounterRecord = async (encounterId: string) => {
-    const remainingEncounters = encounters.filter((item) => item.id !== encounterId)
-    setEncounters(remainingEncounters)
-
-    if (encounter?.id === encounterId) {
-      const nextEncounter = remainingEncounters[0] ?? null
-      setSelectedEncounterId(nextEncounter?.id ?? '')
-      setEncounter(nextEncounter)
-    }
+    if (!window.confirm('Delete this saved encounter? This cannot be undone.')) return
 
     try {
       await deleteEncounter(encounterId)
+      const remainingEncounters = encounters.filter((item) => item.id !== encounterId)
+      setEncounters(remainingEncounters)
+      if (selectedEncounterId === encounterId) {
+        setSelectedEncounterId(remainingEncounters[0]?.id ?? '')
+      }
       setStorageError('')
     } catch {
       setStorageError('Saved encounter could not be deleted locally.')
     }
   }
 
-  const setInitiative = (combatantId: string, value: string) => {
-    setEncounter((currentEncounter) => {
-      if (!currentEncounter) return currentEncounter
-      return {
-        ...currentEncounter,
-        combatants: currentEncounter.combatants.map((combatant) =>
-          combatant.id === combatantId
-            ? { ...combatant, initiative: value === '' ? null : Number(value) }
-            : combatant,
-        ),
-      }
-    })
+  const duplicateEncounter = (sourceEncounter: Encounter) => {
+    const duplicate = duplicateEncounterRecord(sourceEncounter, createId)
+    setEncounters((currentEncounters) => [...currentEncounters, duplicate])
+    setSelectedEncounterId(duplicate.id)
   }
 
   const beginEncounter = () => {
-    if (!encounter || !launchParty) return
+    if (!encounter || encounter.status !== 'draft' || !launchParty) return
 
-    setEncounter(
-      startEncounter(
-        encounter,
-        launchParty,
-        Object.fromEntries(
-          launchParty.members.map((member) => [
-            member.id,
-            Number(pcInitiatives[member.id]),
-          ]),
-        ),
-        createId,
+    const startedEncounter = startEncounter(
+      encounter,
+      launchParty,
+      Object.fromEntries(
+        launchParty.members.map((member) => [
+          member.id,
+          Number(pcInitiatives[member.id]),
+        ]),
+      ),
+      createId,
+    )
+    setEncounters((currentEncounters) =>
+      currentEncounters.map((item) =>
+        item.status === 'active'
+          ? pauseEncounter(item)
+          : item.id === startedEncounter.id
+            ? startedEncounter
+            : item,
       ),
     )
+    setWorkspace('combat')
+  }
+
+  const resumeEncounter = (encounterToResume: Encounter) => {
+    setEncounters((currentEncounters) =>
+      activateEncounter(currentEncounters, encounterToResume.id),
+    )
+    setSelectedEncounterId(encounterToResume.id)
+    setWorkspace('combat')
+  }
+
+  const pauseSelectedEncounter = () => {
+    if (encounter) updateEncounter(pauseEncounter(encounter))
+  }
+
+  const finishEncounter = () => {
+    if (encounter) updateEncounter(completeEncounter(encounter))
+  }
+
+  const advanceTurn = () => {
+    if (encounter) updateEncounter(nextTurn(encounter))
   }
 
   const adjustCreatureHp = (combatantId: string, direction: 'damage' | 'heal') => {
     const amount = Math.abs(Number(hpAdjustment) || 0)
-    if (amount === 0) return
+    if (amount === 0 || !encounter) return
 
-    setEncounter((currentEncounter) => {
-      if (!currentEncounter) return currentEncounter
-      return updateCreatureHp(
-        currentEncounter,
+    updateEncounter(
+      updateCreatureHp(
+        encounter,
         combatantId,
         direction === 'damage' ? -amount : amount,
-      )
-    })
+      ),
+    )
   }
 
   const exportData = async () => {
@@ -330,9 +372,11 @@ function App() {
       setPcInitiatives({})
       setCreatures(data.creatures)
       setEncounters(data.encounters)
-      const firstEncounter = data.encounters[0] ?? null
-      setSelectedEncounterId(firstEncounter?.id ?? '')
-      setEncounter(firstEncounter)
+      const selectedEncounter =
+        data.encounters.find((item) => item.status === 'paused') ??
+        data.encounters[0] ??
+        null
+      setSelectedEncounterId(selectedEncounter?.id ?? '')
       setStorageError('')
     } catch {
       setStorageError('That file is not a valid combat tracker backup.')
@@ -342,8 +386,13 @@ function App() {
   const activeCombatant = encounter?.combatants[encounter.currentTurnIndex]
   const canBeginEncounter = Boolean(
     encounter &&
-      encounter.combatants.length > 0 &&
-      encounter.combatants.every((combatant) => combatant.initiative !== null) &&
+      encounter.status === 'draft' &&
+      encounter.creatureGroups.length > 0 &&
+      encounter.creatureGroups.every(
+        (group) =>
+          Number.isFinite(group.initiative) &&
+          Boolean(encounter.creatureSnapshots[group.creatureId]),
+      ) &&
       launchParty &&
       launchParty.members.length > 0 &&
       launchParty.members.every(
@@ -366,12 +415,14 @@ function App() {
             A quiet command deck for the messy middle of a fight.
           </p>
         </div>
-        <div className="grid size-16 shrink-0 content-center justify-items-center border border-line sm:size-20">
-          <span className="font-mono text-[10px] tracking-[1px] text-muted">ROUND</span>
-          <strong className="font-display text-2xl font-normal text-lime">
-            {encounter?.round ?? '—'}
-          </strong>
-        </div>
+        {workspace === 'combat' && (
+          <div className="grid size-16 shrink-0 content-center justify-items-center border border-line sm:size-20">
+            <span className="font-mono text-[10px] tracking-[1px] text-muted">ROUND</span>
+            <strong className="font-display text-2xl font-normal text-lime">
+              {encounter?.status === 'active' ? encounter.round : '—'}
+            </strong>
+          </div>
+        )}
       </header>
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <span
@@ -395,9 +446,32 @@ function App() {
         </label>
       </div>
 
-      <section className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+      <nav aria-label="Main workspaces" className="mb-6 flex flex-wrap gap-2 border-b border-line pb-3">
+        {([
+          ['parties', 'Parties'],
+          ['creatures', 'Creature Library'],
+          ['encounters', 'Encounters'],
+        ] as const).map(([id, label]) => (
+          <Button
+            key={id}
+            variant={workspace === id ? 'primary' : 'secondary'}
+            aria-pressed={workspace === id}
+            onClick={() => setWorkspace(id)}
+          >
+            {label}
+          </Button>
+        ))}
+      </nav>
+
+      <section
+        className={`grid grid-cols-1 items-start gap-5 ${
+          workspace === 'combat'
+            ? 'xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]'
+            : ''
+        }`}
+      >
         <div className="space-y-5">
-          <Panel>
+          {workspace === 'parties' && <Panel>
             <SectionHeading step="01 / PARTY" title="Who is adventuring?" count={`${party?.members.length ?? 0} PCs`} />
             <div className="mb-5 flex items-end gap-3">
               <FieldLabel className="min-w-0 flex-1">
@@ -521,76 +595,285 @@ function App() {
             <p className="mt-4 border-t border-line pt-4 text-xs leading-relaxed text-muted">
               Players keep their own HP and AC. This tracker only holds their place in initiative.
             </p>
-          </Panel>
+          </Panel>}
 
-          <CreatureLibrary
+          {workspace === 'creatures' && <CreatureLibrary
             creatures={creatures}
             selectedCreatureId={selectedCreatureId}
             onSelectCreature={setSelectedCreatureId}
             onSaveCreature={persistCreature}
             onDeleteCreature={removeCreature}
-          />
+          />}
 
-          <Panel variant="builder">
-            <SectionHeading step="03 / ENCOUNTER" title="Set the scene." />
+          {workspace === 'encounters' && <Panel variant="builder">
+            <SectionHeading step="02 / ENCOUNTERS" title="Prepare an encounter." />
             <div className="space-y-4">
               <FieldLabel>
-                Encounter name
-                <TextInput value={encounterName} onChange={(event) => setEncounterName(event.target.value)} />
+                New encounter name
+                <TextInput
+                  value={encounterName}
+                  onChange={(event) => setEncounterName(event.target.value)}
+                />
               </FieldLabel>
-              <div className="flex items-end gap-3">
-                <FieldLabel className="max-w-32">
-                  Creatures
-                  <TextInput type="number" min="1" max="12" value={creatureQuantity} onChange={(event) => setCreatureQuantity(event.target.value)} />
-                </FieldLabel>
-                <Button variant="primary" onClick={buildEncounter} disabled={!selectedCreatureId}>
-                  Build encounter <span aria-hidden="true">↗</span>
-                </Button>
-              </div>
-              <div className="mt-6 border-t border-line pt-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <h3 className="font-mono text-[10px] tracking-[1px] text-muted">SAVED ENCOUNTERS</h3>
-                  <span className="font-mono text-[10px] text-muted">{encounters.length}</span>
-                </div>
+              <Button variant="primary" onClick={createEncounterDraft} disabled={!isHydrated}>
+                Create draft
+              </Button>
+              <div className="border-t border-line pt-4">
+                <h3 className="mb-3 font-mono text-[10px] tracking-[1px] text-muted">
+                  SAVED ENCOUNTERS ({encounters.length})
+                </h3>
                 {encounters.length === 0 ? (
-                  <p className="text-sm text-muted">No saved encounters yet.</p>
+                  <p className="text-sm text-muted">Create a draft to start preparing an encounter.</p>
                 ) : (
                   <div className="space-y-2">
-                    {encounters.map((savedEncounter) => (
-                      <div
-                        key={savedEncounter.id}
-                        className={`flex items-center justify-between gap-2 border border-line p-2 ${savedEncounter.id === selectedEncounterId ? 'bg-panel' : ''}`}
-                      >
-                        <button
-                          type="button"
-                          className="min-w-0 flex-1 text-left text-sm text-ink"
-                          onClick={() => selectEncounter(savedEncounter)}
+                    {encounters.map((savedEncounter) => {
+                      const creatureCount = savedEncounter.creatureGroups.reduce(
+                        (total, group) => total + group.quantity,
+                        0,
+                      )
+                      return (
+                        <div
+                          key={savedEncounter.id}
+                          className={`flex items-center justify-between gap-2 border border-line p-2 ${
+                            savedEncounter.id === selectedEncounterId ? 'bg-panel' : ''
+                          }`}
                         >
-                          <span className="block truncate font-medium">{savedEncounter.name}</span>
-                          <span className="text-xs text-muted">{savedEncounter.combatants.length} combatants</span>
-                        </button>
-                        <Button
-                          variant="danger"
-                          className="shrink-0"
-                          onClick={() => deleteEncounterRecord(savedEncounter.id)}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    ))}
+                          <button
+                            type="button"
+                            className="min-w-0 flex-1 text-left text-sm text-ink"
+                            onClick={() => selectEncounter(savedEncounter)}
+                          >
+                            <span className="block truncate font-medium">{savedEncounter.name}</span>
+                            <span className="text-xs capitalize text-muted">
+                              {savedEncounter.status} · {creatureCount} creatures
+                            </span>
+                          </button>
+                          {savedEncounter.status !== 'active' && (
+                            <Button
+                              variant="danger"
+                              className="shrink-0"
+                              onClick={() => deleteEncounterRecord(savedEncounter.id)}
+                            >
+                              Delete
+                            </Button>
+                          )}
+                          {savedEncounter.status === 'active' && (
+                            <Button
+                              className="shrink-0"
+                              onClick={() => resumeEncounter(savedEncounter)}
+                            >
+                              Open combat
+                            </Button>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>
             </div>
-            <p className="mt-4 text-xs leading-relaxed text-muted">
-              Choose a party when you are ready to begin combat; saved encounter setup stays independent.
-            </p>
-          </Panel>
+            {encounter && (
+              <div className="mt-6 space-y-4 border-t border-line pt-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-[10px] tracking-[1px] text-lime">
+                      SELECTED / {encounter.status.toUpperCase()}
+                    </p>
+                    <h3 className="mt-1 font-display text-xl text-ink">{encounter.name}</h3>
+                  </div>
+                  {encounter.status !== 'active' && (
+                    <Button variant="danger" onClick={() => deleteEncounterRecord(encounter.id)}>
+                      Delete
+                    </Button>
+                  )}
+                </div>
+                {encounter.status === 'draft' ? (
+                  <>
+                    <FieldLabel>
+                      Encounter name
+                      <TextInput
+                        value={encounter.name}
+                        onChange={(event) =>
+                          updateEncounter({ ...encounter, name: event.target.value })
+                        }
+                      />
+                    </FieldLabel>
+                    <div className="flex flex-wrap items-end gap-3">
+                      <FieldLabel className="min-w-48 flex-1">
+                        Saved creature
+                        <SelectInput
+                          aria-label="Saved creature to add"
+                          value={selectedCreatureId}
+                          onChange={(event) => setSelectedCreatureId(event.target.value)}
+                        >
+                          <option value="">Choose a saved creature</option>
+                          {creatures.map((creature) => (
+                            <option key={creature.id} value={creature.id}>
+                              {creature.name}
+                            </option>
+                          ))}
+                        </SelectInput>
+                      </FieldLabel>
+                      <FieldLabel className="max-w-32">
+                        Quantity
+                        <TextInput
+                          type="number"
+                          min="1"
+                          max="12"
+                          value={creatureQuantity}
+                          onChange={(event) => setCreatureQuantity(event.target.value)}
+                        />
+                      </FieldLabel>
+                      <Button
+                        variant="primary"
+                        onClick={addCreatureToEncounter}
+                        disabled={!selectedCreatureId}
+                      >
+                        Add creature group
+                      </Button>
+                    </div>
+                    {creatures.length === 0 && (
+                      <p className="text-sm text-muted">
+                        Create or import creatures in Creature Library before adding them to an encounter.
+                      </p>
+                    )}
+                    <div className="space-y-3">
+                      {encounter.creatureGroups.map((group, index) => {
+                        const creature = encounter.creatureSnapshots[group.creatureId]
+                        return (
+                          <div key={group.id} className="grid grid-cols-1 gap-3 border border-line p-3 sm:grid-cols-[minmax(0,1fr)_6rem_7rem_auto] sm:items-end">
+                            <div>
+                              <strong className="block text-sm text-ink">
+                                {creature?.name ?? 'Unknown creature'} · Group {index + 1}
+                              </strong>
+                              <span className="text-xs text-muted">
+                                AC {creature?.ac ?? '—'} · {creature?.hpAverage ?? '—'} HP each
+                              </span>
+                            </div>
+                            <FieldLabel>
+                              Quantity
+                              <TextInput
+                                aria-label={`Quantity for ${creature?.name ?? 'creature'} group ${index + 1}`}
+                                type="number"
+                                min="1"
+                                max="12"
+                                value={group.quantity}
+                                onChange={(event) =>
+                                  updateCreatureQuantity(group.id, event.target.value)
+                                }
+                              />
+                            </FieldLabel>
+                            <FieldLabel>
+                              Shared initiative
+                              <TextInput
+                                aria-label={`Initiative for ${creature?.name ?? 'creature'} group ${index + 1}`}
+                                type="number"
+                                value={group.initiative ?? ''}
+                                onChange={(event) =>
+                                  updateGroupInitiative(group.id, event.target.value)
+                                }
+                              />
+                            </FieldLabel>
+                            <Button variant="danger" onClick={() => removeGroup(group.id)}>
+                              Remove group
+                            </Button>
+                          </div>
+                        )
+                      })}
+                      {encounter.creatureGroups.length === 0 && (
+                        <p className="py-3 text-sm text-muted">
+                          Add one or more creature groups to prepare this encounter.
+                        </p>
+                      )}
+                    </div>
+                    <FieldLabel>
+                      Party for this encounter
+                      <SelectInput
+                        aria-label="Party for this encounter"
+                        value={launchPartyId}
+                        onChange={(event) => {
+                          setLaunchPartyId(event.target.value)
+                          setPcInitiatives({})
+                        }}
+                      >
+                        <option value="">Choose a party</option>
+                        {parties.map((item) => (
+                          <option value={item.id} key={item.id}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </SelectInput>
+                    </FieldLabel>
+                    {launchParty?.members.map((member) => (
+                      <div
+                        className="grid grid-cols-[auto_minmax(0,1fr)_auto_5rem] items-center gap-3 border-b border-line py-2"
+                        key={member.id}
+                      >
+                        <TypeBadge type="pc" />
+                        <strong className="text-sm text-ink">{member.name}</strong>
+                        <span className="hidden text-xs text-muted sm:inline">HP / AC at table</span>
+                        <TextInput
+                          aria-label={`Initiative for ${member.name}`}
+                          type="number"
+                          value={pcInitiatives[member.id] ?? ''}
+                          onChange={(event) =>
+                            setPcInitiatives((currentInitiatives) => ({
+                              ...currentInitiatives,
+                              [member.id]: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    ))}
+                    {launchParty && launchParty.members.length === 0 && (
+                      <p className="text-sm text-orange">
+                        Add at least one PC to this party in Parties before starting.
+                      </p>
+                    )}
+                    <Button
+                      variant="primary"
+                      className="w-full"
+                      disabled={!canBeginEncounter}
+                      onClick={beginEncounter}
+                    >
+                      Start encounter and open Combat
+                    </Button>
+                  </>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted">
+                      This {encounter.status} encounter retains its creature snapshots and run state.
+                    </p>
+                    {encounter.status === 'active' && (
+                      <p className="text-xs text-muted">
+                        Pause this encounter in Combat before deleting it.
+                      </p>
+                    )}
+                    {encounter.status === 'paused' && (
+                      <Button variant="primary" onClick={() => resumeEncounter(encounter)}>
+                        Resume encounter
+                      </Button>
+                    )}
+                    {encounter.status === 'active' && (
+                      <Button variant="primary" onClick={() => resumeEncounter(encounter)}>
+                        Open combat
+                      </Button>
+                    )}
+                    {encounter.status === 'complete' && (
+                      <Button onClick={() => duplicateEncounter(encounter)}>
+                        Duplicate as new draft
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </Panel>}
         </div>
 
-        <Panel
+        {workspace === 'combat' && <Panel
           variant="combat"
-          className={encounter?.isStarted ? 'border-lime/50' : ''}
+          className={encounter?.status === 'active' ? 'border-lime/50' : ''}
         >
           <div className="mb-6 flex items-start justify-between gap-4 border-b border-line pb-5">
             <div>
@@ -599,90 +882,35 @@ function App() {
                 {encounter?.name ?? 'No encounter prepared'}
               </h2>
             </div>
-            {encounter?.isStarted && (
-              <span className="flex shrink-0 items-center gap-2 font-mono text-[10px] tracking-[1px] text-lime">
-                <i className="size-2 rounded-full bg-lime" /> LIVE
-              </span>
-            )}
+            <div className="flex flex-col items-end gap-2">
+              {encounter?.status === 'active' && (
+                <span className="flex shrink-0 items-center gap-2 font-mono text-[10px] tracking-[1px] text-lime">
+                  <i className="size-2 rounded-full bg-lime" /> LIVE
+                </span>
+              )}
+              <Button onClick={() => setWorkspace('encounters')}>
+                Back to encounters
+              </Button>
+            </div>
           </div>
           {!encounter && (
             <div className="grid min-h-80 place-content-center justify-items-center text-center">
               <div className="mb-4 font-display text-4xl text-lime" aria-hidden="true">✦</div>
-              <h3 className="font-display text-xl text-ink">Your order is waiting.</h3>
+              <h3 className="font-display text-xl text-ink">No encounter selected.</h3>
               <p className="mt-2 max-w-sm text-sm text-muted">
-                Build an encounter to place the party and creatures on the field.
+                Select an encounter from Encounters to begin or resume combat.
               </p>
             </div>
           )}
-          {encounter && !encounter.isStarted && (
-            <div>
-              <p className="mb-5 text-sm leading-relaxed text-muted">
-                Set creature initiative, choose a party, and enter PC initiative to begin.
-              </p>
-              <div className="mb-5 space-y-2">
-                {encounter.combatants.map((combatant) => (
-                  <div className="grid grid-cols-[auto_minmax(0,1fr)_5rem] items-center gap-3 border-b border-line py-2" key={combatant.id}>
-                    <TypeBadge type="creature" />
-                    <strong className="text-sm text-ink">{combatant.name}</strong>
-                    <TextInput
-                    aria-label={`Initiative for ${combatant.name}`}
-                    type="number"
-                    value={combatant.initiative ?? ''}
-                    onChange={(event) => setInitiative(combatant.id, event.target.value)}
-                  />
-                  </div>
-                ))}
-              </div>
-              <FieldLabel className="mb-5">
-                Party for this encounter
-                <SelectInput
-                  aria-label="Party for this encounter"
-                  value={launchPartyId}
-                  onChange={(event) => {
-                    setLaunchPartyId(event.target.value)
-                    setPcInitiatives({})
-                  }}
-                >
-                  <option value="">Choose a party</option>
-                  {parties.map((item) => (
-                    <option value={item.id} key={item.id}>{item.name}</option>
-                  ))}
-                </SelectInput>
-              </FieldLabel>
-              <div className="mb-5 space-y-2">
-                {launchParty?.members.map((member) => (
-                  <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_5rem] items-center gap-3 border-b border-line py-2" key={member.id}>
-                    <TypeBadge type="pc" />
-                    <strong className="text-sm text-ink">{member.name}</strong>
-                    <span className="hidden text-xs text-muted sm:inline">HP / AC at table</span>
-                    <TextInput
-                      aria-label={`Initiative for ${member.name}`}
-                      type="number"
-                      value={pcInitiatives[member.id] ?? ''}
-                      onChange={(event) =>
-                        setPcInitiatives((currentInitiatives) => ({
-                          ...currentInitiatives,
-                          [member.id]: event.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                ))}
-              </div>
-              {launchParty && launchParty.members.length === 0 && (
-                <p className="mb-4 text-sm text-orange">Add at least one PC to this party before beginning.</p>
-              )}
-              <Button
-                variant="primary"
-                className="w-full"
-                disabled={!canBeginEncounter}
-                onClick={beginEncounter}
-              >
-                Begin encounter <span aria-hidden="true">→</span>
-              </Button>
-            </div>
+          {encounter?.status === 'complete' && (
+            <p className="text-sm text-muted">This encounter is complete and retained as history.</p>
           )}
-          {encounter?.isStarted && (
+          {encounter?.status === 'paused' && (
+            <p className="text-sm text-muted">
+              This encounter is paused. Return to Encounters to resume it.
+            </p>
+          )}
+          {encounter?.status === 'active' && (
             <div>
               <div className="mb-5 flex flex-wrap items-center justify-between gap-4 border border-line bg-panel p-4">
                 <div>
@@ -691,9 +919,13 @@ function App() {
                     {activeCombatant?.name}
                   </strong>
                 </div>
-                <Button variant="primary" onClick={() => setEncounter(nextTurn(encounter))}>
-                  Next turn <span aria-hidden="true">→</span>
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="primary" onClick={advanceTurn}>
+                    Next turn <span aria-hidden="true">→</span>
+                  </Button>
+                  <Button onClick={pauseSelectedEncounter}>Pause</Button>
+                  <Button variant="danger" onClick={finishEncounter}>Complete</Button>
+                </div>
               </div>
               <div className="space-y-3">
                 {encounter.combatants.map((combatant, index) => (
@@ -746,7 +978,7 @@ function App() {
               </div>
             </div>
           )}
-        </Panel>
+        </Panel>}
       </section>
       <footer className="mt-8 flex flex-wrap justify-between gap-3 border-t border-line pt-4 font-mono text-[9px] tracking-[.8px] text-dim">
         <span>LOCAL SESSION</span>
