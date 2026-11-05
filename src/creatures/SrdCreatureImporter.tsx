@@ -106,20 +106,20 @@ export function SrdCreatureImporter({
             <p role="status" className="mb-3 text-sm text-muted">Loading SRD catalog…</p>
           )}
           {catalogStatus === 'network-error' && (
-            <div className="mb-3 border border-orange/40 bg-orange/10 p-3" role="alert">
-              <p className="mb-3 text-sm text-orange">{importError}</p>
+            <div className="mb-3 border border-danger/40 bg-danger/10 p-3" role="alert">
+              <p className="mb-3 text-sm text-danger">{importError}</p>
               <Button onClick={() => void refreshCatalog()}>
                 Retry catalog
               </Button>
             </div>
           )}
           {catalogStatus === 'cache' && (
-            <p role="status" className="mb-3 border border-line bg-[#161a18] p-3 text-xs leading-relaxed text-muted">
+            <p role="status" className="mb-3 border border-line bg-input p-3 text-xs leading-relaxed text-muted">
               Offline catalog cache · {catalog.length} creatures listed. Only imported stat blocks are available offline.
             </p>
           )}
           {catalogStatus === 'success' && (
-            <p role="status" className="mb-3 border border-line bg-[#161a18] p-3 text-xs leading-relaxed text-muted">
+            <p role="status" className="mb-3 border border-line bg-input p-3 text-xs leading-relaxed text-muted">
               Catalog loaded · {catalog.length} SRD creatures available.
             </p>
           )}
@@ -172,10 +172,10 @@ export function SrdCreatureImporter({
             </>
           )}
           {importError && catalogStatus !== 'network-error' && (
-            <p role="alert" className="mt-3 text-sm text-orange">{importError}</p>
+            <p role="alert" className="mt-3 text-sm text-danger">{importError}</p>
           )}
           {importMessage && (
-            <p role="status" className="mt-3 border border-line bg-[#161a18] p-3 text-xs leading-relaxed text-muted">
+            <p role="status" className="mt-3 border border-line bg-input p-3 text-xs leading-relaxed text-muted">
               {importMessage}
             </p>
           )}

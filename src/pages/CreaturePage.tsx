@@ -242,8 +242,8 @@ export function CreaturePage({
   }
 
   return (
-    <Panel>
-      <SectionHeading step="02 / CREATURE" title="Creature library" count={`${creatures.length} saved`} />
+    <Panel variant="builder">
+      <SectionHeading step="CREATURE" title="Creature library" count={`${creatures.length} saved`} />
       <div className="mb-4 flex items-end gap-3">
         <FieldLabel className="min-w-0 flex-1">
           Select creature
@@ -283,11 +283,11 @@ export function CreaturePage({
         }
       />
       {validationErrors.length > 0 && (
-        <ul className="mb-4 list-inside list-disc border border-orange/40 bg-orange/10 p-3 text-sm text-orange" role="alert">
+        <ul className="mb-4 list-inside list-disc border border-danger/40 bg-danger/10 p-3 text-sm text-danger" role="alert">
           {validationErrors.map((error) => <li key={error}>{error}</li>)}
         </ul>
       )}
-      {operationError && <p className="mb-4 text-sm text-orange" role="alert">{operationError}</p>}
+      {operationError && <p className="mb-4 text-sm text-danger" role="alert">{operationError}</p>}
       <div className="flex flex-wrap gap-3 border-t border-line pt-4">
         <Button variant="primary" onClick={save} disabled={isSaving}>
           {editingCreature ? 'Save creature changes' : 'Save creature'}

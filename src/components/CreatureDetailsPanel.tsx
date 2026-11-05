@@ -41,7 +41,7 @@ function DetailSection({
 
   return (
     <section>
-      <h3 className="mb-2 font-mono text-[10px] tracking-[1px] text-lime">
+      <h3 className="mb-2 font-mono text-[10px] tracking-[1px] text-accent">
         {title}
       </h3>
       <ul className="space-y-3">
@@ -96,7 +96,7 @@ export function CreatureDetailsPanel({
       variant="default"
       className="h-full min-h-0 overflow-y-auto"
     >
-      <p className="font-mono text-[10px] tracking-[1px] text-lime">
+      <p className="font-mono text-[10px] tracking-[1px] text-accent">
         SELECTED CREATURE
       </p>
       <h2 className="mt-2 font-display text-2xl leading-tight text-ink">
@@ -142,7 +142,7 @@ export function CreatureDetailsPanel({
       {abilities.length > 0 && (
         <dl className="mt-4 grid grid-cols-3 gap-1">
           {abilities.map(({ label, score, modifier }) => (
-            <div key={label} className="bg-night p-2 text-center">
+            <div key={label} className="bg-raised p-2 text-center">
               <dt className="font-mono text-[9px] text-muted">{label}</dt>
               <dd className="text-sm font-medium text-ink">
                 <span className="ml-1 text-xs text-muted">
@@ -174,7 +174,7 @@ export function CreatureDetailsPanel({
 
       {creature.spellcasting && (
         <section className="mt-5 border-t border-line pt-4">
-          <h3 className="mb-2 font-mono text-[10px] tracking-[1px] text-lime">
+          <h3 className="mb-2 font-mono text-[10px] tracking-[1px] text-accent">
             SPELLCASTING & SPELLS
           </h3>
           <p className="whitespace-pre-line text-sm text-muted">
@@ -199,7 +199,7 @@ export function CreatureDetailsPanel({
         resources?.legendaryResistances !== undefined ||
         resources?.hasLairActions) && (
         <section className="mt-5 border-t border-line pt-4">
-          <h3 className="mb-2 font-mono text-[10px] tracking-[1px] text-lime">
+          <h3 className="mb-2 font-mono text-[10px] tracking-[1px] text-accent">
             RESOURCE LIMITS
           </h3>
           <ul className="space-y-1 text-xs text-muted">

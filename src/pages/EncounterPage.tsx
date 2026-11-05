@@ -101,7 +101,7 @@ export function EncounterPage({
 
   return (
     <Panel variant="builder">
-      <SectionHeading step="02 / ENCOUNTERS" title="Prepare an encounter." />
+      <SectionHeading step="ENCOUNTERS" title="Prepare an encounter." />
       <div className="space-y-4">
         <FieldLabel>
           New encounter name
@@ -134,7 +134,7 @@ export function EncounterPage({
                   <div
                     key={savedEncounter.id}
                     className={`flex items-center justify-between gap-2 border border-line p-2 ${
-                      savedEncounter.id === selectedEncounterId ? 'bg-panel' : ''
+                      savedEncounter.id === selectedEncounterId ? 'bg-accent-soft' : ''
                     }`}
                   >
                     <button
@@ -174,7 +174,7 @@ export function EncounterPage({
         <div className="mt-6 space-y-4 border-t border-line pt-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="font-mono text-[10px] tracking-[1px] text-lime">
+              <p className="font-mono text-[10px] tracking-[1px] text-accent">
                 SELECTED / {encounter.status.toUpperCase()}
               </p>
               <h3 className="mt-1 font-display text-xl text-ink">{encounter.name}</h3>
@@ -324,7 +324,7 @@ export function EncounterPage({
                 </div>
               ))}
               {launchParty && launchParty.members.length === 0 && (
-                <p className="text-sm text-orange">
+                <p className="text-sm text-danger">
                   Add at least one PC to this party in Parties before starting.
                 </p>
               )}

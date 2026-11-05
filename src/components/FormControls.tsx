@@ -17,7 +17,7 @@ export function FieldLabel({ className = '', ...props }: FieldLabelProps) {
 }
 
 const controlClasses =
-  'box-border w-full border border-line bg-[#161a18] px-3 py-2.5 font-sans text-sm text-ink normal-case tracking-normal outline-none placeholder:text-dim focus:border-lime'
+  'box-border w-full border border-line bg-input px-3 py-2.5 font-sans text-sm text-ink normal-case tracking-normal outline-none placeholder:text-dim focus:border-accent'
 
 type InputProps = InputHTMLAttributes<HTMLInputElement>
 

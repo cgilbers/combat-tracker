@@ -46,12 +46,12 @@ export function CombatPage({
       <Panel
         variant="combat"
         className={`flex h-full min-h-0 flex-col overflow-hidden ${
-          encounter?.status === 'active' ? 'border-lime/50' : ''
+          encounter?.status === 'active' ? 'border-accent/50' : ''
         }`}
       >
         {!encounter && (
           <div className="grid min-h-80 place-content-center justify-items-center text-center">
-            <div className="mb-4 font-display text-4xl text-lime" aria-hidden="true">
+            <div className="mb-4 font-display text-4xl text-accent" aria-hidden="true">
               ✦
             </div>
             <h3 className="font-display text-xl text-ink">No encounter selected.</h3>
@@ -71,21 +71,21 @@ export function CombatPage({
           </p>
         )}
         {encounter?.status === 'active' && (
-          <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-4 border border-lime/50 bg-[#20271e] p-4 sm:p-5">
+          <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-4 border border-accent/50 bg-accent-soft p-4 sm:p-5">
             <div className="flex min-w-0 items-center gap-4">
               <div className="min-w-0">
-                <span className="font-mono text-[11px] font-semibold tracking-[1.4px] text-lime">
+                <span className="font-mono text-[11px] font-semibold tracking-[1.4px] text-accent">
                   NOW ACTING
                 </span>
                 <strong className="mt-1 block truncate font-display text-2xl text-ink">
                   {activeCombatantName}
                 </strong>
               </div>
-              <div className="shrink-0 border-l border-lime/30 pl-4">
+              <div className="shrink-0 border-l border-accent/30 pl-4">
                 <span className="block font-mono text-[9px] tracking-[1px] text-muted">
                   INITIATIVE
                 </span>
-                <strong className="block font-mono text-2xl leading-tight text-lime">
+                <strong className="block font-mono text-2xl leading-tight text-accent">
                   {activeCombatantInitiative ?? '—'}
                 </strong>
               </div>
@@ -105,7 +105,7 @@ export function CombatPage({
                 <div
                   className={`grid grid-cols-[auto_auto_minmax(0,1fr)] items-center gap-3 border p-3 sm:grid-cols-[auto_auto_minmax(0,1fr)_auto] sm:p-4 ${
                     index === encounter.currentTurnIndex
-                      ? 'border-lime/50 bg-[#20271e]'
+                      ? 'border-accent/50 bg-accent-soft'
                       : 'border-line bg-panel'
                   } ${combatant.isDefeated ? 'opacity-50' : ''}`}
                   key={combatant.id}
@@ -146,7 +146,7 @@ export function CombatPage({
                           <span className="text-xs text-muted">/ {combatant.maxHp}</span>
                           <Heart
                             aria-hidden="true"
-                            className="size-4 text-orange"
+                            className="size-4 text-danger"
                             strokeWidth={2}
                           />
                         </span>
@@ -154,7 +154,7 @@ export function CombatPage({
                           <strong className="text-ink">{combatant.ac}</strong>
                           <Shield
                             aria-hidden="true"
-                            className="size-4 text-lime"
+                            className="size-4 text-teal"
                             strokeWidth={2}
                           />
                         </span>

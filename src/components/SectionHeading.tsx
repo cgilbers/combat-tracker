@@ -17,7 +17,7 @@ export function SectionHeading({
   return (
     <div className="mb-6 flex items-start justify-between gap-5">
       <div>
-        <span className="font-mono text-[11px] tracking-[1.1px] text-lime">
+        <span className="font-mono text-[11px] tracking-[1.1px] text-accent">
           {step}
         </span>
         <h2 className="mt-2 font-display text-[26px] leading-tight font-medium text-ink">

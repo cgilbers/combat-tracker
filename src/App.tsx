@@ -1,4 +1,5 @@
-import { useState, type ChangeEvent } from 'react'
+import { useEffect, useState, type ChangeEvent } from 'react'
+import { Moon, Sun } from 'lucide-react'
 import {
   activateEncounter,
   addCreatureGroup,
@@ -21,10 +22,15 @@ import { EncounterPage } from './pages/EncounterPage'
 import { PartyPage } from './pages/PartyPage'
 
 type Workspace = 'parties' | 'creatures' | 'encounters' | 'combat'
+type Theme = 'dark' | 'light'
+const THEME_STORAGE_KEY = 'combat-tracker-theme'
 const createId = () => crypto.randomUUID()
 
 function App() {
   const [workspace, setWorkspace] = useState<Workspace>('encounters')
+  const [theme, setTheme] = useState<Theme>(() =>
+    window.localStorage.getItem(THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark',
+  )
   const [selectedEncounterId, setSelectedEncounterId] = useState('')
   const {
     parties,
@@ -43,6 +49,11 @@ function App() {
     exportBackup,
     importBackup,
   } = useAppData()
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+  }, [theme])
+
   const effectiveEncounterId = encounters.some(
     (item) => item.id === selectedEncounterId,
   )
@@ -224,26 +235,40 @@ function App() {
             {workspace === 'combat' ? encounter?.name ?? 'Combat Tracker' : 'Combat Tracker'}
           </h1>
           {workspace === 'combat' && encounter?.status === 'active' && (
-            <span className="flex shrink-0 items-center gap-2 font-mono text-[10px] tracking-[1px] text-lime">
-              <i className="size-2 rounded-full bg-lime" /> LIVE
+            <span className="flex shrink-0 items-center gap-2 font-mono text-[10px] tracking-[1px] text-accent">
+              <i className="size-2 rounded-full bg-accent" /> LIVE
             </span>
           )}
         </div>
-        {workspace === 'combat' && (
-          <div className="grid size-16 shrink-0 content-center justify-items-center border border-line sm:size-20">
-            <span className="font-mono text-[10px] tracking-[1px] text-muted">ROUND</span>
-            <strong className="font-display text-2xl font-normal text-lime">
-              {encounter?.status === 'active' ? encounter.round : '—'}
-            </strong>
-          </div>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          {workspace === 'combat' && (
+            <div className="grid size-16 content-center justify-items-center border border-line sm:size-20">
+              <span className="font-mono text-[10px] tracking-[1px] text-muted">ROUND</span>
+              <strong className="font-display text-2xl font-normal text-accent">
+                {encounter?.status === 'active' ? encounter.round : '—'}
+              </strong>
+            </div>
+          )}
+          <Button
+            variant="secondary"
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          >
+            {theme === 'dark' ? (
+              <Sun aria-hidden="true" className="size-4" />
+            ) : (
+              <Moon aria-hidden="true" className="size-4" />
+            )}
+          </Button>
+        </div>
       </header>
       {(workspace !== 'combat' || storageError) && (
         <div className="mb-6 flex flex-wrap items-center gap-3">
           <span
             role={storageError ? 'alert' : 'status'}
             className={`mr-auto font-mono text-[10px] tracking-[.7px] ${
-              storageError ? 'text-orange' : 'text-muted'
+              storageError ? 'text-danger' : 'text-muted'
             }`}
           >
             {storageError || (isHydrated ? 'SAVED LOCALLY' : 'LOADING SAVED DATA')}
@@ -251,7 +276,7 @@ function App() {
           {workspace !== 'combat' && (
             <>
               <Button onClick={exportData} disabled={!isHydrated}>Export JSON</Button>
-              <label className="cursor-pointer border border-line bg-transparent px-3 py-2 font-mono text-[10px] text-muted transition-colors hover:border-lime hover:text-lime">
+              <label className="cursor-pointer border border-line bg-transparent px-3 py-2 font-mono text-[10px] text-muted transition-colors hover:border-accent hover:text-accent">
                 Import JSON
                 <input
                   type="file"

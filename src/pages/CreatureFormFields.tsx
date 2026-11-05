@@ -59,7 +59,7 @@ export function CreatureFormFields({
         </FieldLabel>
       </div>
       <fieldset className="my-5 border border-line p-4">
-        <legend className="px-2 font-mono text-[10px] tracking-[.5px] text-lime">Ability scores</legend>
+        <legend className="px-2 font-mono text-[10px] tracking-[.5px] text-accent">Ability scores</legend>
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
           {abilityKeys.map((ability) => (
             <FieldLabel className="min-w-0" key={ability}>
@@ -126,7 +126,7 @@ export function CreatureFormFields({
         </FieldLabel>
       </div>
       <fieldset className="my-5 border border-line p-4">
-        <legend className="px-2 font-mono text-[10px] tracking-[.5px] text-lime">Boss resource limits</legend>
+        <legend className="px-2 font-mono text-[10px] tracking-[.5px] text-accent">Boss resource limits</legend>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <FieldLabel>
             Spell slots by level
@@ -140,9 +140,9 @@ export function CreatureFormFields({
             Legendary resistance limit
             <TextInput aria-label="Legendary resistance limit" type="number" min="0" step="1" value={form.legendaryResistanceLimit} onChange={(event) => onUpdateField('legendaryResistanceLimit', event.target.value)} />
           </FieldLabel>
-          <label className="flex flex-row items-center justify-between gap-2 self-end border border-line bg-[#161a18] px-3 py-3 font-mono text-[10px] tracking-[.3px] text-muted uppercase">
+          <label className="flex flex-row items-center justify-between gap-2 self-end border border-line bg-input px-3 py-3 font-mono text-[10px] tracking-[.3px] text-muted uppercase">
             Has lair actions
-            <input className="size-4 accent-lime" type="checkbox" checked={form.hasLairActions} onChange={(event) => onUpdateField('hasLairActions', event.target.checked)} />
+            <input className="size-4 accent-accent" type="checkbox" checked={form.hasLairActions} onChange={(event) => onUpdateField('hasLairActions', event.target.checked)} />
           </label>
         </div>
       </fieldset>
