@@ -219,9 +219,16 @@ function App() {
           workspace === 'combat' ? 'mb-3' : 'mb-5'
         }`}
       >
-        <h1 className="font-display text-2xl font-medium text-ink">
-          Combat Tracker
-        </h1>
+        <div className="flex min-w-0 items-center gap-3">
+          <h1 className="truncate font-display text-2xl font-medium text-ink">
+            {workspace === 'combat' ? encounter?.name ?? 'Combat Tracker' : 'Combat Tracker'}
+          </h1>
+          {workspace === 'combat' && encounter?.status === 'active' && (
+            <span className="flex shrink-0 items-center gap-2 font-mono text-[10px] tracking-[1px] text-lime">
+              <i className="size-2 rounded-full bg-lime" /> LIVE
+            </span>
+          )}
+        </div>
         {workspace === 'combat' && (
           <div className="grid size-16 shrink-0 content-center justify-items-center border border-line sm:size-20">
             <span className="font-mono text-[10px] tracking-[1px] text-muted">ROUND</span>
@@ -328,9 +335,8 @@ function App() {
           <CombatPage
             encounter={encounter}
             activeCombatantName={activeCombatant?.name}
+            activeCombatantInitiative={activeCombatant?.initiative}
             onNextTurn={advanceTurn}
-            onPause={pauseSelectedEncounter}
-            onComplete={finishEncounter}
             onAdjustCreatureHp={adjustCreatureHp}
           />
         </div>
@@ -341,9 +347,21 @@ function App() {
         }`}
       >
         {workspace === 'combat' ? (
-          <Button onClick={() => setWorkspace('encounters')}>
-            ← Back to encounters
-          </Button>
+          <>
+            <div className="flex flex-wrap gap-2">
+              {encounter?.status === 'active' && (
+                <>
+                  <Button onClick={pauseSelectedEncounter}>Pause</Button>
+                  <Button variant="danger" onClick={finishEncounter}>
+                    Complete
+                  </Button>
+                </>
+              )}
+            </div>
+            <Button onClick={() => setWorkspace('encounters')}>
+              ← Back to encounters
+            </Button>
+          </>
         ) : (
           <>
             <span>LOCAL SESSION</span>

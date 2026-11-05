@@ -10,9 +10,8 @@ import type { Encounter } from '../domain/types'
 type CombatPageProps = {
   encounter: Encounter | null
   activeCombatantName?: string
+  activeCombatantInitiative?: number | null
   onNextTurn: () => void
-  onPause: () => void
-  onComplete: () => void
   onAdjustCreatureHp: (
     combatantId: string,
     direction: 'damage' | 'heal',
@@ -23,9 +22,8 @@ type CombatPageProps = {
 export function CombatPage({
   encounter,
   activeCombatantName,
+  activeCombatantInitiative,
   onNextTurn,
-  onPause,
-  onComplete,
   onAdjustCreatureHp,
 }: CombatPageProps) {
   const [hpAdjustment, setHpAdjustment] = useState('1')
@@ -50,23 +48,6 @@ export function CombatPage({
           encounter?.status === 'active' ? 'border-lime/50' : ''
         }`}
       >
-        <div className="mb-4 flex shrink-0 items-start justify-between gap-4 border-b border-line pb-4">
-          <div>
-            <span className="font-mono text-[11px] tracking-[1.1px] text-lime">
-              04 / COMBAT RUN
-            </span>
-            <h2 className="mt-2 font-display text-[26px] leading-tight font-medium text-ink">
-              {encounter?.name ?? 'No encounter selected'}
-            </h2>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            {encounter?.status === 'active' && (
-              <span className="flex shrink-0 items-center gap-2 font-mono text-[10px] tracking-[1px] text-lime">
-                <i className="size-2 rounded-full bg-lime" /> LIVE
-              </span>
-            )}
-          </div>
-        </div>
         {!encounter && (
           <div className="grid min-h-80 place-content-center justify-items-center text-center">
             <div className="mb-4 font-display text-4xl text-lime" aria-hidden="true">
@@ -89,24 +70,28 @@ export function CombatPage({
           </p>
         )}
         {encounter?.status === 'active' && (
-          <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-4 border border-line bg-panel p-4">
-            <div>
-              <span className="font-mono text-[10px] tracking-[1px] text-lime">
-                NOW ACTING
-              </span>
-              <strong className="mt-1 block font-display text-xl text-ink">
-                {activeCombatantName}
-              </strong>
+          <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-4 border border-lime/50 bg-[#20271e] p-4 sm:p-5">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="min-w-0">
+                <span className="font-mono text-[11px] font-semibold tracking-[1.4px] text-lime">
+                  NOW ACTING
+                </span>
+                <strong className="mt-1 block truncate font-display text-2xl text-ink">
+                  {activeCombatantName}
+                </strong>
+              </div>
+              <div className="shrink-0 border-l border-lime/30 pl-4">
+                <span className="block font-mono text-[9px] tracking-[1px] text-muted">
+                  INITIATIVE
+                </span>
+                <strong className="block font-mono text-2xl leading-tight text-lime">
+                  {activeCombatantInitiative ?? '—'}
+                </strong>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="primary" onClick={onNextTurn}>
-                Next turn <span aria-hidden="true">→</span>
-              </Button>
-              <Button onClick={onPause}>Pause</Button>
-              <Button variant="danger" onClick={onComplete}>
-                Complete
-              </Button>
-            </div>
+            <Button variant="primary" onClick={onNextTurn}>
+              Next turn <span aria-hidden="true">→</span>
+            </Button>
           </div>
         )}
         {encounter && encounter.combatants.length > 0 && (
