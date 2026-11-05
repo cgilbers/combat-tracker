@@ -10,13 +10,14 @@ import { CreatureLibrary } from './creatures/CreatureLibrary'
 import {
   createBackup,
   deleteCreature,
+  deleteEncounter,
   deleteParty,
   loadAppData,
   parseBackup,
   restoreBackup,
   saveCreature,
+  saveEncounter,
   saveParty,
-  saveAppData,
 } from './data/database'
 import type { Creature, Encounter, Party } from './domain/types'
 
@@ -33,6 +34,8 @@ function App() {
   const [selectedCreatureId, setSelectedCreatureId] = useState('')
   const [creatureQuantity, setCreatureQuantity] = useState('1')
   const [encounterName, setEncounterName] = useState('The Old Watchtower')
+  const [encounters, setEncounters] = useState<Encounter[]>([])
+  const [selectedEncounterId, setSelectedEncounterId] = useState('')
   const [encounter, setEncounter] = useState<Encounter | null>(null)
   const [hpAdjustment, setHpAdjustment] = useState('1')
   const [isHydrated, setIsHydrated] = useState(false)
@@ -50,7 +53,10 @@ function App() {
         setSelectedPartyId(data.parties[0]?.id ?? '')
         setLaunchPartyId(data.parties[0]?.id ?? '')
         setCreatures(data.creatures)
-        setEncounter(data.encounters[0] ?? null)
+        setEncounters(data.encounters)
+        const firstEncounter = data.encounters[0] ?? null
+        setSelectedEncounterId(firstEncounter?.id ?? '')
+        setEncounter(firstEncounter)
       })
       .catch(() => {
         if (!isCancelled) setStorageError('Saved data could not be loaded. You can continue in memory.')
@@ -75,11 +81,21 @@ function App() {
   }, [party, isHydrated])
 
   useEffect(() => {
-    if (!isHydrated) return
+    if (!isHydrated || !encounter) return
 
-    saveAppData({ encounter }).catch(() => {
-      setStorageError('Changes could not be saved locally.')
-    })
+    saveEncounter(encounter)
+      .then(() => {
+        setEncounters((currentEncounters) => {
+          const exists = currentEncounters.some((item) => item.id === encounter.id)
+          return exists
+            ? currentEncounters.map((item) => (item.id === encounter.id ? encounter : item))
+            : [...currentEncounters, encounter]
+        })
+        setStorageError('')
+      })
+      .catch(() => {
+        setStorageError('Encounter changes could not be saved locally.')
+      })
   }, [encounter, isHydrated])
 
   const createParty = () => {
@@ -200,15 +216,42 @@ function App() {
       ac: creature.ac,
     }))
 
-    setEncounter({
+    const nextEncounter: Encounter = {
       id: createId(),
       name: encounterName.trim() || 'Unnamed encounter',
       combatants: creatureCombatants,
       round: 1,
       currentTurnIndex: 0,
       isStarted: false,
-    })
+    }
+
+    setSelectedEncounterId(nextEncounter.id)
+    setEncounter(nextEncounter)
     setPcInitiatives({})
+  }
+
+  const selectEncounter = (nextEncounter: Encounter) => {
+    setSelectedEncounterId(nextEncounter.id)
+    setEncounter(nextEncounter)
+    setPcInitiatives({})
+  }
+
+  const deleteEncounterRecord = async (encounterId: string) => {
+    const remainingEncounters = encounters.filter((item) => item.id !== encounterId)
+    setEncounters(remainingEncounters)
+
+    if (encounter?.id === encounterId) {
+      const nextEncounter = remainingEncounters[0] ?? null
+      setSelectedEncounterId(nextEncounter?.id ?? '')
+      setEncounter(nextEncounter)
+    }
+
+    try {
+      await deleteEncounter(encounterId)
+      setStorageError('')
+    } catch {
+      setStorageError('Saved encounter could not be deleted locally.')
+    }
   }
 
   const setInitiative = (combatantId: string, value: string) => {
@@ -286,7 +329,10 @@ function App() {
       setLaunchPartyId(data.parties[0]?.id ?? '')
       setPcInitiatives({})
       setCreatures(data.creatures)
-      setEncounter(data.encounters[0] ?? null)
+      setEncounters(data.encounters)
+      const firstEncounter = data.encounters[0] ?? null
+      setSelectedEncounterId(firstEncounter?.id ?? '')
+      setEncounter(firstEncounter)
       setStorageError('')
     } catch {
       setStorageError('That file is not a valid combat tracker backup.')
@@ -500,6 +546,40 @@ function App() {
                 <Button variant="primary" onClick={buildEncounter} disabled={!selectedCreatureId}>
                   Build encounter <span aria-hidden="true">↗</span>
                 </Button>
+              </div>
+              <div className="mt-6 border-t border-line pt-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h3 className="font-mono text-[10px] tracking-[1px] text-muted">SAVED ENCOUNTERS</h3>
+                  <span className="font-mono text-[10px] text-muted">{encounters.length}</span>
+                </div>
+                {encounters.length === 0 ? (
+                  <p className="text-sm text-muted">No saved encounters yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {encounters.map((savedEncounter) => (
+                      <div
+                        key={savedEncounter.id}
+                        className={`flex items-center justify-between gap-2 border border-line p-2 ${savedEncounter.id === selectedEncounterId ? 'bg-panel' : ''}`}
+                      >
+                        <button
+                          type="button"
+                          className="min-w-0 flex-1 text-left text-sm text-ink"
+                          onClick={() => selectEncounter(savedEncounter)}
+                        >
+                          <span className="block truncate font-medium">{savedEncounter.name}</span>
+                          <span className="text-xs text-muted">{savedEncounter.combatants.length} combatants</span>
+                        </button>
+                        <Button
+                          variant="danger"
+                          className="shrink-0"
+                          onClick={() => deleteEncounterRecord(savedEncounter.id)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <p className="mt-4 text-xs leading-relaxed text-muted">

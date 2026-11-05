@@ -135,6 +135,38 @@ describe('combat tracker database', () => {
     expect((await loadAppData()).creatures).toEqual([anotherCreature])
   })
 
+  it('keeps multiple saved encounters when a single encounter is updated', async () => {
+    const firstEncounter: Encounter = {
+      id: 'encounter-1',
+      name: 'The Old Watchtower',
+      combatants: [{ id: 'combatant-1', type: 'creature', refId: 'creature-1', name: 'Ash Wyrmling', initiative: null }],
+      round: 1,
+      currentTurnIndex: 0,
+      isStarted: false,
+    }
+    const secondEncounter: Encounter = {
+      id: 'encounter-2',
+      name: 'The Red Hall',
+      combatants: [{ id: 'combatant-2', type: 'pc', refId: 'pc-1', name: 'Mira', initiative: 15 }],
+      round: 1,
+      currentTurnIndex: 0,
+      isStarted: true,
+    }
+    const updatedEncounter: Encounter = {
+      ...firstEncounter,
+      name: 'The Old Watchtower Revised',
+      round: 2,
+    }
+
+    await saveEncounter(firstEncounter)
+    await saveEncounter(secondEncounter)
+    await saveAppData({ encounter: updatedEncounter })
+
+    const persisted = await loadAppData()
+    expect(persisted.encounters).toHaveLength(2)
+    expect(persisted.encounters).toEqual(expect.arrayContaining([updatedEncounter, secondEncounter]))
+  })
+
   it('rejects malformed backups', () => {
     expect(() => parseBackup('{"version": 2}')).toThrow()
     expect(() => parseBackup('not json')).toThrow()

@@ -46,6 +46,10 @@ export async function saveEncounter(encounter: Encounter): Promise<void> {
   await database.encounters.put(encounter)
 }
 
+export async function deleteEncounter(encounterId: string): Promise<void> {
+  await database.encounters.delete(encounterId)
+}
+
 export async function loadAppData(): Promise<{
   parties: Party[]
   creatures: Creature[]
@@ -60,13 +64,18 @@ export async function loadAppData(): Promise<{
   return { parties, creatures, encounters }
 }
 
-export async function saveAppData(data: { encounter: Encounter | null }): Promise<void> {
+export async function saveAppData(data: {
+  encounter?: Encounter | null
+  encounters?: Encounter[]
+}): Promise<void> {
+  if (!data.encounter && !data.encounters) return
+
   await database.transaction(
     'rw',
     database.encounters,
     async () => {
-      await database.encounters.clear()
       if (data.encounter) await database.encounters.put(data.encounter)
+      if (data.encounters) await database.encounters.bulkPut(data.encounters)
     },
   )
 }
