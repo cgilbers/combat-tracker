@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Button } from '../components/Button'
 import { FieldLabel, SelectInput, TextInput } from '../components/FormControls'
 import { Panel } from '../components/Panel'
@@ -11,29 +12,17 @@ type EncounterPageProps = {
   selectedEncounterId: string
   creatures: Creature[]
   parties: Party[]
-  launchParty: Party | null
-  launchPartyId: string
-  encounterName: string
-  selectedCreatureId: string
-  creatureQuantity: string
-  pcInitiatives: Record<string, string>
-  canBeginEncounter: boolean
   isHydrated: boolean
-  onEncounterNameChange: (value: string) => void
-  onCreateDraft: () => void
+  onCreateDraft: (name: string) => void
   onSelectEncounter: (encounter: Encounter) => void
   onDeleteEncounter: (encounterId: string) => void
   onDuplicateEncounter: (encounter: Encounter) => void
   onUpdateEncounter: (encounter: Encounter) => void
-  onSelectCreature: (creatureId: string) => void
-  onCreatureQuantityChange: (value: string) => void
-  onAddCreatureGroup: () => void
+  onAddCreatureGroup: (creatureId: string, quantity: number) => void
   onUpdateCreatureQuantity: (groupId: string, value: string) => void
   onUpdateGroupInitiative: (groupId: string, value: string) => void
   onRemoveGroup: (groupId: string) => void
-  onSelectParty: (partyId: string) => void
-  onPcInitiativeChange: (memberId: string, value: string) => void
-  onStartEncounter: () => void
+  onStartEncounter: (party: Party, initiatives: Record<string, string>) => void
   onResumeEncounter: (encounter: Encounter) => void
 }
 
@@ -43,31 +32,73 @@ export function EncounterPage({
   selectedEncounterId,
   creatures,
   parties,
-  launchParty,
-  launchPartyId,
-  encounterName,
-  selectedCreatureId,
-  creatureQuantity,
-  pcInitiatives,
-  canBeginEncounter,
   isHydrated,
-  onEncounterNameChange,
   onCreateDraft,
   onSelectEncounter,
   onDeleteEncounter,
   onDuplicateEncounter,
   onUpdateEncounter,
-  onSelectCreature,
-  onCreatureQuantityChange,
   onAddCreatureGroup,
   onUpdateCreatureQuantity,
   onUpdateGroupInitiative,
   onRemoveGroup,
-  onSelectParty,
-  onPcInitiativeChange,
   onStartEncounter,
   onResumeEncounter,
 }: EncounterPageProps) {
+  const [encounterName, setEncounterName] = useState('The Old Watchtower')
+  const [selectedCreatureId, setSelectedCreatureId] = useState('')
+  const [creatureQuantity, setCreatureQuantity] = useState('1')
+  const [launchPartyId, setLaunchPartyId] = useState('')
+  const [pcInitiatives, setPcInitiatives] = useState<Record<string, string>>({})
+  const effectiveLaunchPartyId = parties.some((party) => party.id === launchPartyId)
+    ? launchPartyId
+    : parties[0]?.id ?? ''
+  const launchParty =
+    parties.find((party) => party.id === effectiveLaunchPartyId) ?? null
+  const canBeginEncounter = Boolean(
+    encounter &&
+      encounter.status === 'draft' &&
+      encounter.creatureGroups.length > 0 &&
+      encounter.creatureGroups.every(
+        (group) =>
+          Number.isFinite(group.initiative) &&
+          Boolean(encounter.creatureSnapshots[group.creatureId]),
+      ) &&
+      launchParty &&
+      launchParty.members.length > 0 &&
+      launchParty.members.every(
+        (member) =>
+          pcInitiatives[member.id] !== undefined &&
+          pcInitiatives[member.id] !== '' &&
+          Number.isFinite(Number(pcInitiatives[member.id])),
+      ),
+  )
+
+  const selectEncounter = (nextEncounter: Encounter) => {
+    setPcInitiatives({})
+    onSelectEncounter(nextEncounter)
+  }
+
+  const createDraft = () => {
+    setPcInitiatives({})
+    onCreateDraft(encounterName)
+  }
+
+  const addCreatureGroup = () => {
+    if (!selectedCreatureId) return
+    onAddCreatureGroup(selectedCreatureId, Number(creatureQuantity))
+  }
+
+  const selectParty = (partyId: string) => {
+    setLaunchPartyId(partyId)
+    setPcInitiatives({})
+  }
+
+  const beginEncounter = () => {
+    if (!launchParty || !canBeginEncounter) return
+    onStartEncounter(launchParty, pcInitiatives)
+  }
+
   return (
     <Panel variant="builder">
       <SectionHeading step="02 / ENCOUNTERS" title="Prepare an encounter." />
@@ -76,10 +107,14 @@ export function EncounterPage({
           New encounter name
           <TextInput
             value={encounterName}
-            onChange={(event) => onEncounterNameChange(event.target.value)}
+            onChange={(event) => setEncounterName(event.target.value)}
           />
         </FieldLabel>
-        <Button variant="primary" onClick={onCreateDraft} disabled={!isHydrated}>
+        <Button
+          variant="primary"
+          onClick={createDraft}
+          disabled={!isHydrated}
+        >
           Create draft
         </Button>
         <div className="border-t border-line pt-4">
@@ -105,7 +140,7 @@ export function EncounterPage({
                     <button
                       type="button"
                       className="min-w-0 flex-1 text-left text-sm text-ink"
-                      onClick={() => onSelectEncounter(savedEncounter)}
+                      onClick={() => selectEncounter(savedEncounter)}
                     >
                       <span className="block truncate font-medium">{savedEncounter.name}</span>
                       <span className="text-xs capitalize text-muted">
@@ -167,7 +202,7 @@ export function EncounterPage({
                   <SelectInput
                     aria-label="Saved creature to add"
                     value={selectedCreatureId}
-                    onChange={(event) => onSelectCreature(event.target.value)}
+                    onChange={(event) => setSelectedCreatureId(event.target.value)}
                   >
                     <option value="">Choose a saved creature</option>
                     {creatures.map((creature) => (
@@ -184,12 +219,12 @@ export function EncounterPage({
                     min="1"
                     max="12"
                     value={creatureQuantity}
-                    onChange={(event) => onCreatureQuantityChange(event.target.value)}
+                    onChange={(event) => setCreatureQuantity(event.target.value)}
                   />
                 </FieldLabel>
                 <Button
                   variant="primary"
-                  onClick={onAddCreatureGroup}
+                  onClick={addCreatureGroup}
                   disabled={!selectedCreatureId}
                 >
                   Add creature group
@@ -256,8 +291,8 @@ export function EncounterPage({
                 Party for this encounter
                 <SelectInput
                   aria-label="Party for this encounter"
-                  value={launchPartyId}
-                  onChange={(event) => onSelectParty(event.target.value)}
+                  value={effectiveLaunchPartyId}
+                  onChange={(event) => selectParty(event.target.value)}
                 >
                   <option value="">Choose a party</option>
                   {parties.map((item) => (
@@ -280,7 +315,10 @@ export function EncounterPage({
                     type="number"
                     value={pcInitiatives[member.id] ?? ''}
                     onChange={(event) =>
-                      onPcInitiativeChange(member.id, event.target.value)
+                      setPcInitiatives((current) => ({
+                        ...current,
+                        [member.id]: event.target.value,
+                      }))
                     }
                   />
                 </div>
@@ -294,7 +332,7 @@ export function EncounterPage({
                 variant="primary"
                 className="w-full"
                 disabled={!canBeginEncounter}
-                onClick={onStartEncounter}
+                onClick={beginEncounter}
               >
                 Start encounter and open Combat
               </Button>

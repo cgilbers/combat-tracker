@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Button } from '../components/Button'
 import { CountBadge } from '../components/CountBadge'
 import { TextInput } from '../components/FormControls'
@@ -7,27 +8,29 @@ import type { Encounter } from '../domain/types'
 
 type CombatPageProps = {
   encounter: Encounter | null
-  hpAdjustment: string
   activeCombatantName?: string
-  onHpAdjustmentChange: (value: string) => void
   onNextTurn: () => void
   onPause: () => void
   onComplete: () => void
-  onAdjustCreatureHp: (combatantId: string, direction: 'damage' | 'heal') => void
+  onAdjustCreatureHp: (
+    combatantId: string,
+    direction: 'damage' | 'heal',
+    amount: string,
+  ) => void
   onBackToEncounters: () => void
 }
 
 export function CombatPage({
   encounter,
-  hpAdjustment,
   activeCombatantName,
-  onHpAdjustmentChange,
   onNextTurn,
   onPause,
   onComplete,
   onAdjustCreatureHp,
   onBackToEncounters,
 }: CombatPageProps) {
+  const [hpAdjustment, setHpAdjustment] = useState('1')
+
   return (
     <Panel
       variant="combat"
@@ -131,17 +134,21 @@ export function CombatPage({
                         type="number"
                         min="1"
                         value={hpAdjustment}
-                        onChange={(event) => onHpAdjustmentChange(event.target.value)}
+                        onChange={(event) => setHpAdjustment(event.target.value)}
                       />
                       <Button
                         variant="damage"
-                        onClick={() => onAdjustCreatureHp(combatant.id, 'damage')}
+                        onClick={() =>
+                          onAdjustCreatureHp(combatant.id, 'damage', hpAdjustment)
+                        }
                       >
                         Damage
                       </Button>
                       <Button
                         variant="heal"
-                        onClick={() => onAdjustCreatureHp(combatant.id, 'heal')}
+                        onClick={() =>
+                          onAdjustCreatureHp(combatant.id, 'heal', hpAdjustment)
+                        }
                       >
                         Heal
                       </Button>

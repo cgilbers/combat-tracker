@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState, type ChangeEvent } from 'react'
 import {
   activateEncounter,
   addCreatureGroup,
@@ -13,224 +13,66 @@ import {
   updateCreatureHp,
 } from './combat/engine'
 import { Button } from './components/Button'
-import {
-  createBackup,
-  deleteCreature,
-  deleteEncounter,
-  deleteParty,
-  loadAppData,
-  parseBackup,
-  restoreBackup,
-  saveAppData,
-  saveCreature,
-  saveParty,
-} from './data/database'
-import type { Creature, Encounter, Party } from './domain/types'
+import { useAppData } from './data/useAppData'
+import type { Encounter, Party } from './domain/types'
 import { CombatPage } from './pages/CombatPage'
 import { CreaturePage } from './pages/CreaturePage'
 import { EncounterPage } from './pages/EncounterPage'
 import { PartyPage } from './pages/PartyPage'
 
-const createId = () => crypto.randomUUID()
 type Workspace = 'parties' | 'creatures' | 'encounters' | 'combat'
+const createId = () => crypto.randomUUID()
 
 function App() {
   const [workspace, setWorkspace] = useState<Workspace>('encounters')
-  const [parties, setParties] = useState<Party[]>([])
-  const [selectedPartyId, setSelectedPartyId] = useState('')
-  const [launchPartyId, setLaunchPartyId] = useState('')
-  const [pcName, setPcName] = useState('')
-  const [pcNotes, setPcNotes] = useState('')
-  const [pcInitiatives, setPcInitiatives] = useState<Record<string, string>>({})
-  const [creatures, setCreatures] = useState<Creature[]>([])
-  const [selectedCreatureId, setSelectedCreatureId] = useState('')
-  const [creatureQuantity, setCreatureQuantity] = useState('1')
-  const [encounterName, setEncounterName] = useState('The Old Watchtower')
-  const [encounters, setEncounters] = useState<Encounter[]>([])
   const [selectedEncounterId, setSelectedEncounterId] = useState('')
-  const [hpAdjustment, setHpAdjustment] = useState('1')
-  const [isHydrated, setIsHydrated] = useState(false)
-  const [storageError, setStorageError] = useState('')
-  const party = parties.find((item) => item.id === selectedPartyId) ?? null
-  const launchParty = parties.find((item) => item.id === launchPartyId) ?? null
-  const encounter = encounters.find((item) => item.id === selectedEncounterId) ?? null
-
-  useEffect(() => {
-    let isCancelled = false
-
-    loadAppData()
-      .then((data) => {
-        if (isCancelled) return
-        setParties(data.parties)
-        setSelectedPartyId(data.parties[0]?.id ?? '')
-        setLaunchPartyId(data.parties[0]?.id ?? '')
-        setCreatures(data.creatures)
-        setEncounters(data.encounters)
-        const selectedEncounter =
-          data.encounters.find((item) => item.status === 'paused') ??
-          data.encounters[0] ??
-          null
-        setSelectedEncounterId(selectedEncounter?.id ?? '')
-      })
-      .catch(() => {
-        if (!isCancelled) setStorageError('Saved data could not be loaded. You can continue in memory.')
-      })
-      .finally(() => {
-        if (!isCancelled) setIsHydrated(true)
-      })
-
-    return () => {
-      isCancelled = true
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!isHydrated) return
-
-    if (party) {
-      saveParty(party).catch(() => {
-        setStorageError('Party changes could not be saved locally.')
-      })
-    }
-  }, [party, isHydrated])
-
-  useEffect(() => {
-    if (!isHydrated) return
-
-    saveAppData({ encounters })
-      .then(() => setStorageError(''))
-      .catch(() => {
-        setStorageError('Encounter changes could not be saved locally.')
-      })
-  }, [encounters, isHydrated])
-
-  const createParty = () => {
-    const newParty: Party = {
-      id: createId(),
-      name: `New party ${parties.length + 1}`,
-      members: [],
-    }
-    setParties((currentParties) => [...currentParties, newParty])
-    setSelectedPartyId(newParty.id)
-    setLaunchPartyId(newParty.id)
-    setPcInitiatives({})
-  }
-
-  const removeParty = async () => {
-    if (!party) return
-
-    const removedPartyId = party.id
-    const remainingParties = parties.filter((item) => item.id !== removedPartyId)
-    const nextPartyId = remainingParties[0]?.id ?? ''
-
-    setParties(remainingParties)
-    if (selectedPartyId === removedPartyId) setSelectedPartyId(nextPartyId)
-    if (launchPartyId === removedPartyId) {
-      setLaunchPartyId(nextPartyId)
-      setPcInitiatives({})
-    }
-
-    try {
-      await deleteParty(removedPartyId)
-      setStorageError('')
-    } catch {
-      setStorageError('Party could not be deleted from local storage.')
-    }
-  }
-
-  const updateSelectedParty = (update: (currentParty: Party) => Party) => {
-    if (!party) return
-    setParties((currentParties) =>
-      currentParties.map((item) => (item.id === party.id ? update(item) : item)),
-    )
-  }
-
-  const addPc = () => {
-    const name = pcName.trim()
-    if (!name || !party) return
-
-    updateSelectedParty((currentParty) => ({
-      ...currentParty,
-      members: [
-        ...currentParty.members,
-        {
-          id: createId(),
-          name,
-          notes: pcNotes.trim() || undefined,
-        },
-      ],
-    }))
-    setPcName('')
-    setPcNotes('')
-  }
-
-  const removePc = (characterId: string) => {
-    updateSelectedParty((currentParty) => ({
-      ...currentParty,
-      members: currentParty.members.filter((member) => member.id !== characterId),
-    }))
-    setPcInitiatives((currentInitiatives) => {
-      const remainingInitiatives = { ...currentInitiatives }
-      delete remainingInitiatives[characterId]
-      return remainingInitiatives
-    })
-  }
-
-  const persistCreature = async (creature: Creature) => {
-    try {
-      await saveCreature(creature)
-      setCreatures((currentCreatures) => {
-        const exists = currentCreatures.some((item) => item.id === creature.id)
-        return exists
-          ? currentCreatures.map((item) => (item.id === creature.id ? creature : item))
-          : [...currentCreatures, creature]
-      })
-      setStorageError('')
-    } catch (error) {
-      setStorageError('Creature could not be saved locally.')
-      throw error
-    }
-  }
-
-  const removeCreature = async (creatureId: string) => {
-    try {
-      await deleteCreature(creatureId)
-      setCreatures((currentCreatures) =>
-        currentCreatures.filter((creature) => creature.id !== creatureId),
-      )
-      if (selectedCreatureId === creatureId) setSelectedCreatureId('')
-      setStorageError('')
-    } catch (error) {
-      setStorageError('Creature could not be deleted from local storage.')
-      throw error
-    }
-  }
-
-  const createEncounterDraft = () => {
-    const newEncounter = createDraftEncounter(
-      createId(),
-      encounterName.trim() || `New encounter ${encounters.length + 1}`,
-    )
-    setEncounters((currentEncounters) => [...currentEncounters, newEncounter])
-    setSelectedEncounterId(newEncounter.id)
-    setPcInitiatives({})
-  }
+  const {
+    parties,
+    creatures,
+    encounters,
+    isHydrated,
+    storageError,
+    setStorageError,
+    createParty,
+    updateParty,
+    deleteParty,
+    saveCreature,
+    deleteCreature,
+    updateEncounters,
+    deleteEncounter,
+    exportBackup,
+    importBackup,
+  } = useAppData()
+  const effectiveEncounterId = encounters.some(
+    (item) => item.id === selectedEncounterId,
+  )
+    ? selectedEncounterId
+    : (
+        encounters.find((item) => item.status === 'paused') ?? encounters[0]
+      )?.id ?? ''
+  const encounter = encounters.find((item) => item.id === effectiveEncounterId) ?? null
 
   const updateEncounter = (updatedEncounter: Encounter) => {
-    setEncounters((currentEncounters) =>
+    updateEncounters((currentEncounters) =>
       currentEncounters.map((item) =>
         item.id === updatedEncounter.id ? updatedEncounter : item,
       ),
     )
   }
 
-  const addCreatureToEncounter = () => {
-    const creature = creatures.find((item) => item.id === selectedCreatureId)
-    if (!encounter || encounter.status !== 'draft' || !creature) return
-
-    updateEncounter(
-      addCreatureGroup(encounter, creature, Number(creatureQuantity), createId),
+  const createEncounterDraft = (name: string) => {
+    const newEncounter = createDraftEncounter(
+      createId(),
+      name.trim() || `New encounter ${encounters.length + 1}`,
     )
+    updateEncounters((currentEncounters) => [...currentEncounters, newEncounter])
+    setSelectedEncounterId(newEncounter.id)
+  }
+
+  const addCreatureToEncounter = (creatureId: string, quantity: number) => {
+    const creature = creatures.find((item) => item.id === creatureId)
+    if (!encounter || encounter.status !== 'draft' || !creature) return
+    updateEncounter(addCreatureGroup(encounter, creature, quantity, createId))
   }
 
   const updateCreatureQuantity = (groupId: string, value: string) => {
@@ -250,52 +92,36 @@ function App() {
   }
 
   const removeGroup = (groupId: string) => {
-    if (!encounter) return
-    updateEncounter(removeCreatureGroup(encounter, groupId))
-  }
-
-  const selectEncounter = (nextEncounter: Encounter) => {
-    setSelectedEncounterId(nextEncounter.id)
-    setPcInitiatives({})
+    if (encounter) updateEncounter(removeCreatureGroup(encounter, groupId))
   }
 
   const deleteEncounterRecord = async (encounterId: string) => {
     if (!window.confirm('Delete this saved encounter? This cannot be undone.')) return
-
-    try {
-      await deleteEncounter(encounterId)
-      const remainingEncounters = encounters.filter((item) => item.id !== encounterId)
-      setEncounters(remainingEncounters)
-      if (selectedEncounterId === encounterId) {
-        setSelectedEncounterId(remainingEncounters[0]?.id ?? '')
-      }
-      setStorageError('')
-    } catch {
-      setStorageError('Saved encounter could not be deleted locally.')
+    const deleted = await deleteEncounter(encounterId)
+    if (deleted && selectedEncounterId === encounterId) {
+      setSelectedEncounterId(
+        encounters.find((item) => item.id !== encounterId)?.id ?? '',
+      )
     }
   }
 
   const duplicateEncounter = (sourceEncounter: Encounter) => {
     const duplicate = duplicateEncounterRecord(sourceEncounter, createId)
-    setEncounters((currentEncounters) => [...currentEncounters, duplicate])
+    updateEncounters((currentEncounters) => [...currentEncounters, duplicate])
     setSelectedEncounterId(duplicate.id)
   }
 
-  const beginEncounter = () => {
-    if (!encounter || encounter.status !== 'draft' || !launchParty) return
-
+  const beginEncounter = (party: Party, pcInitiatives: Record<string, string>) => {
+    if (!encounter || encounter.status !== 'draft') return
     const startedEncounter = startEncounter(
       encounter,
-      launchParty,
+      party,
       Object.fromEntries(
-        launchParty.members.map((member) => [
-          member.id,
-          Number(pcInitiatives[member.id]),
-        ]),
+        party.members.map((member) => [member.id, Number(pcInitiatives[member.id])]),
       ),
       createId,
     )
-    setEncounters((currentEncounters) =>
+    updateEncounters((currentEncounters) =>
       currentEncounters.map((item) =>
         item.status === 'active'
           ? pauseEncounter(item)
@@ -308,7 +134,7 @@ function App() {
   }
 
   const resumeEncounter = (encounterToResume: Encounter) => {
-    setEncounters((currentEncounters) =>
+    updateEncounters((currentEncounters) =>
       activateEncounter(currentEncounters, encounterToResume.id),
     )
     setSelectedEncounterId(encounterToResume.id)
@@ -327,10 +153,13 @@ function App() {
     if (encounter) updateEncounter(nextTurn(encounter))
   }
 
-  const adjustCreatureHp = (combatantId: string, direction: 'damage' | 'heal') => {
-    const amount = Math.abs(Number(hpAdjustment) || 0)
+  const adjustCreatureHp = (
+    combatantId: string,
+    direction: 'damage' | 'heal',
+    adjustment: string,
+  ) => {
+    const amount = Math.abs(Number(adjustment) || 0)
     if (amount === 0 || !encounter) return
-
     updateEncounter(
       updateCreatureHp(
         encounter,
@@ -342,8 +171,10 @@ function App() {
 
   const exportData = async () => {
     try {
-      const backup = await createBackup()
-      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
+      const backup = await exportBackup()
+      const blob = new Blob([JSON.stringify(backup, null, 2)], {
+        type: 'application/json',
+      })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -356,24 +187,16 @@ function App() {
     }
   }
 
-  const importData = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    event.target.value = ''
+  const importData = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0]
+    event.currentTarget.value = ''
     if (!file) return
 
     try {
-      await restoreBackup(parseBackup(await file.text()))
-      const data = await loadAppData()
-      setParties(data.parties)
-      setSelectedPartyId(data.parties[0]?.id ?? '')
-      setLaunchPartyId(data.parties[0]?.id ?? '')
-      setPcInitiatives({})
-      setCreatures(data.creatures)
-      setEncounters(data.encounters)
+      const data = await importBackup(await file.text())
       const selectedEncounter =
         data.encounters.find((item) => item.status === 'paused') ??
-        data.encounters[0] ??
-        null
+        data.encounters[0]
       setSelectedEncounterId(selectedEncounter?.id ?? '')
       setStorageError('')
     } catch {
@@ -382,24 +205,6 @@ function App() {
   }
 
   const activeCombatant = encounter?.combatants[encounter.currentTurnIndex]
-  const canBeginEncounter = Boolean(
-    encounter &&
-      encounter.status === 'draft' &&
-      encounter.creatureGroups.length > 0 &&
-      encounter.creatureGroups.every(
-        (group) =>
-          Number.isFinite(group.initiative) &&
-          Boolean(encounter.creatureSnapshots[group.creatureId]),
-      ) &&
-      launchParty &&
-      launchParty.members.length > 0 &&
-      launchParty.members.every(
-        (member) =>
-          pcInitiatives[member.id] !== undefined &&
-          pcInitiatives[member.id] !== '' &&
-          Number.isFinite(Number(pcInitiatives[member.id])),
-      ),
-  )
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12 lg:px-12">
@@ -467,87 +272,54 @@ function App() {
         }`}
       >
         <div className="space-y-5">
-          {workspace === 'parties' && (
+          <div hidden={workspace !== 'parties'}>
             <PartyPage
               parties={parties}
-              selectedPartyId={selectedPartyId}
-              party={party}
-              pcName={pcName}
-              pcNotes={pcNotes}
-              onSelectParty={setSelectedPartyId}
               onCreateParty={createParty}
-              onDeleteParty={removeParty}
-              onUpdateParty={updateSelectedParty}
-              onPcNameChange={setPcName}
-              onPcNotesChange={setPcNotes}
-              onAddPc={addPc}
-              onRemovePc={removePc}
+              onDeleteParty={deleteParty}
+              onUpdateParty={updateParty}
             />
-          )}
-          {workspace === 'creatures' && (
+          </div>
+          <div hidden={workspace !== 'creatures'}>
             <CreaturePage
               creatures={creatures}
-              selectedCreatureId={selectedCreatureId}
-              onSelectCreature={setSelectedCreatureId}
-              onSaveCreature={persistCreature}
-              onDeleteCreature={removeCreature}
+              onSaveCreature={saveCreature}
+              onDeleteCreature={deleteCreature}
             />
-          )}
-          {workspace === 'encounters' && (
+          </div>
+          <div hidden={workspace !== 'encounters'}>
             <EncounterPage
               encounters={encounters}
               encounter={encounter}
-              selectedEncounterId={selectedEncounterId}
+              selectedEncounterId={effectiveEncounterId}
               creatures={creatures}
               parties={parties}
-              launchParty={launchParty}
-              launchPartyId={launchPartyId}
-              encounterName={encounterName}
-              selectedCreatureId={selectedCreatureId}
-              creatureQuantity={creatureQuantity}
-              pcInitiatives={pcInitiatives}
-              canBeginEncounter={canBeginEncounter}
               isHydrated={isHydrated}
-              onEncounterNameChange={setEncounterName}
               onCreateDraft={createEncounterDraft}
-              onSelectEncounter={selectEncounter}
+              onSelectEncounter={(selected) => setSelectedEncounterId(selected.id)}
               onDeleteEncounter={deleteEncounterRecord}
               onDuplicateEncounter={duplicateEncounter}
               onUpdateEncounter={updateEncounter}
-              onSelectCreature={setSelectedCreatureId}
-              onCreatureQuantityChange={setCreatureQuantity}
               onAddCreatureGroup={addCreatureToEncounter}
               onUpdateCreatureQuantity={updateCreatureQuantity}
               onUpdateGroupInitiative={updateGroupInitiative}
               onRemoveGroup={removeGroup}
-              onSelectParty={(partyId) => {
-                setLaunchPartyId(partyId)
-                setPcInitiatives({})
-              }}
-              onPcInitiativeChange={(memberId, value) =>
-                setPcInitiatives((currentInitiatives) => ({
-                  ...currentInitiatives,
-                  [memberId]: value,
-                }))
-              }
               onStartEncounter={beginEncounter}
               onResumeEncounter={resumeEncounter}
             />
-          )}
+          </div>
         </div>
-        {workspace === 'combat' && (
+        <div hidden={workspace !== 'combat'}>
           <CombatPage
             encounter={encounter}
-            hpAdjustment={hpAdjustment}
             activeCombatantName={activeCombatant?.name}
-            onHpAdjustmentChange={setHpAdjustment}
             onNextTurn={advanceTurn}
             onPause={pauseSelectedEncounter}
             onComplete={finishEncounter}
             onAdjustCreatureHp={adjustCreatureHp}
             onBackToEncounters={() => setWorkspace('encounters')}
           />
-        )}
+        </div>
       </section>
       <footer className="mt-8 flex flex-wrap justify-between gap-3 border-t border-line pt-4 font-mono text-[9px] tracking-[.8px] text-dim">
         <span>LOCAL SESSION</span>
