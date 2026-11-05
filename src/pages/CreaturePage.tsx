@@ -10,7 +10,7 @@ import {
   parseNumericEntries,
   validateCreature,
 } from '../domain/creature'
-import { SrdCreatureImporter } from './SrdCreatureImporter'
+import { SrdCreatureImporter } from '../creatures/SrdCreatureImporter'
 import type { AbilityScores, Creature } from '../domain/types'
 
 type CreatureForm = {
@@ -42,7 +42,7 @@ type CreatureForm = {
   tags: string
 }
 
-type CreatureLibraryProps = {
+type CreaturePageProps = {
   creatures: Creature[]
   selectedCreatureId: string
   onSelectCreature: (creatureId: string) => void
@@ -149,13 +149,13 @@ function optionalPositiveCount(value: string): number | undefined {
   return value.trim() === '' ? undefined : Number(value)
 }
 
-export function CreatureLibrary({
+export function CreaturePage({
   creatures,
   selectedCreatureId,
   onSelectCreature,
   onSaveCreature,
   onDeleteCreature,
-}: CreatureLibraryProps) {
+}: CreaturePageProps) {
   const [editingCreatureId, setEditingCreatureId] = useState('')
   const [form, setForm] = useState<CreatureForm>(emptyForm)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
