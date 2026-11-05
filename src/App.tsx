@@ -207,8 +207,18 @@ function App() {
   const activeCombatant = encounter?.combatants[encounter.currentTurnIndex]
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8 lg:px-12">
-      <header className="mb-5 flex items-center justify-between gap-4 border-b border-line pb-3">
+    <main
+      className={`mx-auto flex w-full max-w-7xl flex-col px-4 sm:px-8 lg:px-12 ${
+        workspace === 'combat'
+          ? 'h-dvh min-h-0 overflow-hidden py-3 sm:py-4'
+          : 'min-h-screen py-6 sm:py-8'
+      }`}
+    >
+      <header
+        className={`flex shrink-0 items-center justify-between gap-4 border-b border-line pb-3 ${
+          workspace === 'combat' ? 'mb-3' : 'mb-5'
+        }`}
+      >
         <h1 className="font-display text-2xl font-medium text-ink">
           Combat Tracker
         </h1>
@@ -267,7 +277,11 @@ function App() {
         </nav>
       )}
       <section
-        className="grid grid-cols-1 items-start gap-5"
+        className={`grid grid-cols-1 gap-5 ${
+          workspace === 'combat'
+            ? 'grid-rows-[minmax(0,1fr)] min-h-0 flex-1 items-stretch overflow-hidden'
+            : 'items-start'
+        }`}
       >
         <div className="space-y-5" hidden={workspace === 'combat'}>
           <div hidden={workspace !== 'parties'}>
@@ -307,7 +321,10 @@ function App() {
             />
           </div>
         </div>
-        <div hidden={workspace !== 'combat'}>
+        <div
+          className={workspace === 'combat' ? 'min-h-0 overflow-hidden' : ''}
+          hidden={workspace !== 'combat'}
+        >
           <CombatPage
             encounter={encounter}
             activeCombatantName={activeCombatant?.name}
@@ -315,14 +332,25 @@ function App() {
             onPause={pauseSelectedEncounter}
             onComplete={finishEncounter}
             onAdjustCreatureHp={adjustCreatureHp}
-            onBackToEncounters={() => setWorkspace('encounters')}
           />
         </div>
       </section>
-      <footer className="mt-8 flex flex-wrap justify-between gap-3 border-t border-line pt-4 font-mono text-[9px] tracking-[.8px] text-dim">
-        <span>LOCAL SESSION</span>
-        <span>NO CLOUD / NO DISTRACTIONS</span>
-        <span>COMBAT TRACKER MVP</span>
+      <footer
+        className={`flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-line pt-3 font-mono text-[9px] tracking-[.8px] ${
+          workspace === 'combat' ? 'mt-3' : 'mt-8 text-dim'
+        }`}
+      >
+        {workspace === 'combat' ? (
+          <Button onClick={() => setWorkspace('encounters')}>
+            ← Back to encounters
+          </Button>
+        ) : (
+          <>
+            <span>LOCAL SESSION</span>
+            <span>NO CLOUD / NO DISTRACTIONS</span>
+            <span>COMBAT TRACKER MVP</span>
+          </>
+        )}
       </footer>
     </main>
   )

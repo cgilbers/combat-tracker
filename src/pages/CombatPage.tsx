@@ -18,7 +18,6 @@ type CombatPageProps = {
     direction: 'damage' | 'heal',
     amount: string,
   ) => void
-  onBackToEncounters: () => void
 }
 
 export function CombatPage({
@@ -28,7 +27,6 @@ export function CombatPage({
   onPause,
   onComplete,
   onAdjustCreatureHp,
-  onBackToEncounters,
 }: CombatPageProps) {
   const [hpAdjustment, setHpAdjustment] = useState('1')
   const [selectedCombatantId, setSelectedCombatantId] = useState('')
@@ -45,12 +43,14 @@ export function CombatPage({
     : undefined
 
   return (
-    <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(18rem,1fr)]">
+    <div className="grid h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1.2fr)_minmax(0,1fr)] gap-3 overflow-hidden xl:grid-cols-[minmax(0,3fr)_minmax(18rem,1fr)] xl:grid-rows-1 xl:gap-5">
       <Panel
         variant="combat"
-        className={encounter?.status === 'active' ? 'border-lime/50' : ''}
+        className={`flex h-full min-h-0 flex-col overflow-hidden ${
+          encounter?.status === 'active' ? 'border-lime/50' : ''
+        }`}
       >
-        <div className="mb-6 flex items-start justify-between gap-4 border-b border-line pb-5">
+        <div className="mb-4 flex shrink-0 items-start justify-between gap-4 border-b border-line pb-4">
           <div>
             <span className="font-mono text-[11px] tracking-[1.1px] text-lime">
               04 / COMBAT RUN
@@ -65,7 +65,6 @@ export function CombatPage({
                 <i className="size-2 rounded-full bg-lime" /> LIVE
               </span>
             )}
-            <Button onClick={onBackToEncounters}>Back to encounters</Button>
           </div>
         </div>
         {!encounter && (
@@ -90,7 +89,7 @@ export function CombatPage({
           </p>
         )}
         {encounter?.status === 'active' && (
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-4 border border-line bg-panel p-4">
+          <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-4 border border-line bg-panel p-4">
             <div>
               <span className="font-mono text-[10px] tracking-[1px] text-lime">
                 NOW ACTING
@@ -111,11 +110,11 @@ export function CombatPage({
           </div>
         )}
         {encounter && encounter.combatants.length > 0 && (
-          <div>
+          <div className="flex min-h-0 flex-1 flex-col">
             <h3 className="mb-3 font-mono text-[10px] tracking-[1px] text-muted">
               INITIATIVE ORDER
             </h3>
-            <div className="space-y-3">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
               {encounter.combatants.map((combatant, index) => (
                 <div
                   className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:p-4 ${
@@ -204,7 +203,7 @@ export function CombatPage({
           </div>
         )}
       </Panel>
-      {encounter && encounter.combatants.length > 0 && (
+      {encounter && (
         <CreatureDetailsPanel
           creature={selectedCreature}
           combatant={selectedCombatant}

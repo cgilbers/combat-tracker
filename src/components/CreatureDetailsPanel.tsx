@@ -62,7 +62,7 @@ export function CreatureDetailsPanel({
 }: CreatureDetailsPanelProps) {
   if (!creature) {
     return (
-      <Panel variant="default" className="min-h-64">
+      <Panel variant="default" className="h-full min-h-0 overflow-y-auto">
         <p className="font-mono text-[10px] tracking-[1px] text-muted">
           CREATURE DETAILS
         </p>
@@ -94,7 +94,7 @@ export function CreatureDetailsPanel({
   return (
     <Panel
       variant="default"
-      className="max-h-[calc(100vh-2rem)] overflow-y-auto xl:sticky xl:top-4"
+      className="h-full min-h-0 overflow-y-auto"
     >
       <p className="font-mono text-[10px] tracking-[1px] text-lime">
         SELECTED CREATURE
