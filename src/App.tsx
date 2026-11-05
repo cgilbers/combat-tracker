@@ -221,43 +221,51 @@ function App() {
           </div>
         )}
       </header>
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <span
-          role={storageError ? 'alert' : 'status'}
-          className={`mr-auto font-mono text-[10px] tracking-[.7px] ${
-            storageError ? 'text-orange' : 'text-muted'
-          }`}
-        >
-          {storageError || (isHydrated ? 'SAVED LOCALLY' : 'LOADING SAVED DATA')}
-        </span>
-        <Button onClick={exportData} disabled={!isHydrated}>Export JSON</Button>
-        <label className="cursor-pointer border border-line bg-transparent px-3 py-2 font-mono text-[10px] text-muted transition-colors hover:border-lime hover:text-lime">
-          Import JSON
-          <input
-            type="file"
-            className="sr-only"
-            accept="application/json,.json"
-            onChange={importData}
-            disabled={!isHydrated}
-          />
-        </label>
-      </div>
-      <nav aria-label="Main workspaces" className="mb-6 flex flex-wrap gap-2 border-b border-line pb-3">
-        {([
-          ['parties', 'Parties'],
-          ['creatures', 'Creature Library'],
-          ['encounters', 'Encounters'],
-        ] as const).map(([id, label]) => (
-          <Button
-            key={id}
-            variant={workspace === id ? 'primary' : 'secondary'}
-            aria-pressed={workspace === id}
-            onClick={() => setWorkspace(id)}
+      {(workspace !== 'combat' || storageError) && (
+        <div className="mb-6 flex flex-wrap items-center gap-3">
+          <span
+            role={storageError ? 'alert' : 'status'}
+            className={`mr-auto font-mono text-[10px] tracking-[.7px] ${
+              storageError ? 'text-orange' : 'text-muted'
+            }`}
           >
-            {label}
-          </Button>
-        ))}
-      </nav>
+            {storageError || (isHydrated ? 'SAVED LOCALLY' : 'LOADING SAVED DATA')}
+          </span>
+          {workspace !== 'combat' && (
+            <>
+              <Button onClick={exportData} disabled={!isHydrated}>Export JSON</Button>
+              <label className="cursor-pointer border border-line bg-transparent px-3 py-2 font-mono text-[10px] text-muted transition-colors hover:border-lime hover:text-lime">
+                Import JSON
+                <input
+                  type="file"
+                  className="sr-only"
+                  accept="application/json,.json"
+                  onChange={importData}
+                  disabled={!isHydrated}
+                />
+              </label>
+            </>
+          )}
+        </div>
+      )}
+      {workspace !== 'combat' && (
+        <nav aria-label="Main workspaces" className="mb-6 flex flex-wrap gap-2 border-b border-line pb-3">
+          {([
+            ['parties', 'Parties'],
+            ['creatures', 'Creature Library'],
+            ['encounters', 'Encounters'],
+          ] as const).map(([id, label]) => (
+            <Button
+              key={id}
+              variant={workspace === id ? 'primary' : 'secondary'}
+              aria-pressed={workspace === id}
+              onClick={() => setWorkspace(id)}
+            >
+              {label}
+            </Button>
+          ))}
+        </nav>
+      )}
       <section
         className="grid grid-cols-1 items-start gap-5"
       >
