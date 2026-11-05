@@ -242,7 +242,7 @@ export function CreaturePage({
   }
 
   return (
-    <Panel variant="builder">
+    <Panel>
       <SectionHeading step="CREATURE" title="Creature library" count={`${creatures.length} saved`} />
       <div className="mb-4 flex items-end gap-3">
         <FieldLabel className="min-w-0 flex-1">

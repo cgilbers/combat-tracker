@@ -276,7 +276,7 @@ function App() {
           {workspace !== 'combat' && (
             <>
               <Button onClick={exportData} disabled={!isHydrated}>Export JSON</Button>
-              <label className="cursor-pointer border border-line bg-transparent px-3 py-2 font-mono text-[10px] text-muted transition-colors hover:border-accent hover:text-accent">
+              <label className="cursor-pointer rounded-md border border-line bg-transparent px-3 py-2 font-sans text-xs font-medium text-muted transition-colors hover:border-accent hover:text-accent">
                 Import JSON
                 <input
                   type="file"
@@ -389,9 +389,8 @@ function App() {
           </>
         ) : (
           <>
-            <span>LOCAL SESSION</span>
-            <span>NO CLOUD / NO DISTRACTIONS</span>
             <span>COMBAT TRACKER MVP</span>
+            <span>by cgilbers</span>
           </>
         )}
       </footer>

@@ -16,26 +16,27 @@
   --color-highlight: var(--app-highlight);
   --color-teal: var(--app-teal);
   --color-grape: var(--app-grape);
-  --font-sans: 'Avenir Next', 'Trebuchet MS', sans-serif;
-  --font-display: Georgia, 'Times New Roman', serif;
-  --font-mono: 'SFMono-Regular', Consolas, monospace;
+  --font-sans: 'Fira Sans', sans-serif;
+  --font-display: 'Cal Sans', sans-serif;
+  --font-hero: 'Germania One', sans-serif;
+  --font-mono: 'Fira Sans', sans-serif;
 }
 
 @layer base {
   :root,
   :root[data-theme='dark'] {
     color-scheme: dark;
-    --app-night: #0d160b;
-    --app-panel: color-mix(in srgb, #0d160b 94%, #f8cdcd);
-    --app-raised: color-mix(in srgb, #0d160b 90%, #f8cdcd);
-    --app-input: color-mix(in srgb, #0d160b 82%, #f8cdcd);
+    --app-night: #0c0b16;
+    --app-panel: color-mix(in srgb, #0c0b16 94%, #fff);
+    --app-raised: color-mix(in srgb, #0c0b16 90%, #fff);
+    --app-input: color-mix(in srgb, #0c0b16 82%, #fff);
     --app-ink: #f7f7f2;
-    --app-muted: color-mix(in srgb, #f7f7f2 72%, #0d160b);
-    --app-dim: color-mix(in srgb, #f7f7f2 50%, #0d160b);
-    --app-line: color-mix(in srgb, #0d160b 58%, #f7f7f2);
+    --app-muted: color-mix(in srgb, #f7f7f2 72%, #0c0b16);
+    --app-dim: color-mix(in srgb, #f7f7f2 50%, #0c0b16);
+    --app-line: color-mix(in srgb, #0c0b16 75%, #fff);
     --app-accent: #db2d31;
     --app-accent-contrast: #ffffff;
-    --app-accent-soft: color-mix(in srgb, #0d160b 88%, #db2d31);
+    --app-accent-soft: color-mix(in srgb, #0c0b16 88%, #db2d31);
     --app-danger: #db2d31;
     --app-highlight: #6c6ea0;
     --app-teal: #3aafb9;
@@ -44,17 +45,17 @@
 
   :root[data-theme='light'] {
     color-scheme: light;
-    --app-night: color-mix(in srgb, #f7f7f2 86%, #0d160b);
-    --app-panel: color-mix(in srgb, #f7f7f2 92%, #0d160b);
-    --app-raised: color-mix(in srgb, #f7f7f2 97%, #0d160b);
-    --app-input: #f7f7f2;
-    --app-ink: #0d160b;
-    --app-muted: color-mix(in srgb, #0d160b 72%, #f7f7f2);
-    --app-dim: color-mix(in srgb, #0d160b 50%, #f7f7f2);
-    --app-line: color-mix(in srgb, #f7f7f2 55%, #0d160b);
+    --app-night: #f7f7f2;
+    --app-panel: #fff;
+    --app-raised: color-mix(in srgb, #fff 90%, #0c0b16);
+    --app-input: color-mix(in srgb, #fff 96%, #0c0b16);
+    --app-ink: #0c0b16;
+    --app-muted: color-mix(in srgb, #0c0b16 72%, #f7f7f2);
+    --app-dim: color-mix(in srgb, #0c0b16 50%, #f7f7f2);
+    --app-line: color-mix(in srgb, #f7f7f2 75%, #0c0b16);
     --app-accent: #db2d31;
     --app-accent-contrast: #ffffff;
-    --app-accent-soft: color-mix(in srgb, #f7f7f2 88%, #db2d31);
+    --app-accent-soft: color-mix(in srgb, #fff 88%, #db2d31);
     --app-danger: #db2d31;
     --app-highlight: #6c6ea0;
     --app-teal: #3aafb9;

@@ -20,7 +20,7 @@ export function SectionHeading({
         <span className="font-mono text-[11px] tracking-[1.1px] text-accent">
           {step}
         </span>
-        <h2 className="mt-2 font-display text-[26px] leading-tight font-medium text-ink">
+        <h2 className="mt-2 font-hero text-[26px] leading-tight text-ink">
           {title}
         </h2>
       </div>

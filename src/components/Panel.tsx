@@ -13,7 +13,9 @@ export function Panel({
 }: PanelProps) {
   return (
     <Element
-      className={`border border-line bg-panel p-5 sm:p-6 ${className}`}
+      className={`rounded-lg border border-line p-5 shadow-sm shadow-night/10 sm:p-6 ${
+        variant === 'builder' ? 'bg-raised' : 'bg-panel'
+      } ${className}`}
       {...props}
     />
   )

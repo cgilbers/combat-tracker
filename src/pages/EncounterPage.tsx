@@ -100,7 +100,7 @@ export function EncounterPage({
   }
 
   return (
-    <Panel variant="builder">
+    <Panel >
       <SectionHeading step="ENCOUNTERS" title="Prepare an encounter." />
       <div className="space-y-4">
         <FieldLabel>

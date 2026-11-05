@@ -117,7 +117,7 @@ export function CombatPage({
                       <button
                         type="button"
                         aria-pressed={selectedCombatant?.id === combatant.id}
-                        className="block min-w-0 text-left"
+                        className="block min-w-0 text-left hover:underline"
                         onClick={() => setSelectedCombatantId(combatant.id)}
                       >
                         <strong className="block truncate text-sm text-ink">
