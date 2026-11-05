@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Heart, Shield } from 'lucide-react'
 import { Button } from '../components/Button'
 import { CountBadge } from '../components/CountBadge'
 import { CreatureDetailsPanel } from '../components/CreatureDetailsPanel'
@@ -102,13 +103,14 @@ export function CombatPage({
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
               {encounter.combatants.map((combatant, index) => (
                 <div
-                  className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:p-4 ${
+                  className={`grid grid-cols-[auto_auto_minmax(0,1fr)] items-center gap-3 border p-3 sm:grid-cols-[auto_auto_minmax(0,1fr)_auto] sm:p-4 ${
                     index === encounter.currentTurnIndex
                       ? 'border-lime/50 bg-[#20271e]'
                       : 'border-line bg-panel'
                   } ${combatant.isDefeated ? 'opacity-50' : ''}`}
                   key={combatant.id}
                 >
+                  <CountBadge className="text-center">{combatant.initiative}</CountBadge>
                   <TypeBadge type={combatant.type} />
                   <div className="min-w-0">
                     {combatant.type === 'creature' ? (
@@ -136,13 +138,26 @@ export function CombatPage({
                       </>
                     )}
                   </div>
-                  <CountBadge className="text-center">{combatant.initiative}</CountBadge>
                   {combatant.type === 'creature' ? (
                     <div className="col-span-3 grid grid-cols-2 items-center gap-2 border-t border-line pt-3 sm:col-span-1 sm:grid-cols-1 sm:border-0 sm:pt-0">
-                      <div className="text-sm">
-                        <strong className="text-ink">{combatant.currentHp}</strong>
-                        <span className="ml-1 text-xs text-muted">
-                          / {combatant.maxHp} HP · AC {combatant.ac}
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className="inline-flex items-center gap-1">
+                          <strong className="text-ink">{combatant.currentHp}</strong>
+                          <span className="text-xs text-muted">/ {combatant.maxHp}</span>
+                          <Heart
+                            aria-hidden="true"
+                            className="size-4 text-orange"
+                            strokeWidth={2}
+                          />
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-muted">
+                          <span className="text-xs">AC</span>
+                          <strong className="text-ink">{combatant.ac}</strong>
+                          <Shield
+                            aria-hidden="true"
+                            className="size-4 text-lime"
+                            strokeWidth={2}
+                          />
                         </span>
                       </div>
                       {encounter.status === 'active' && (
