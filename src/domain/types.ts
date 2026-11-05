@@ -66,6 +66,7 @@ export type CombatantState = {
   id: string
   type: CombatantType
   refId: string
+  groupId?: string
   name: string
   initiative: number | null
   currentHp?: number
@@ -74,12 +75,23 @@ export type CombatantState = {
   isDefeated?: boolean
 }
 
+export type EncounterStatus = 'draft' | 'active' | 'paused' | 'complete'
+
+export type EncounterCreatureGroup = {
+  id: string
+  creatureId: string
+  quantity: number
+  initiative: number | null
+}
+
 export type Encounter = {
   id: string
   name: string
+  status: EncounterStatus
+  creatureGroups: EncounterCreatureGroup[]
+  creatureSnapshots: Record<string, Creature>
   partyId?: string
   combatants: CombatantState[]
   round: number
   currentTurnIndex: number
-  isStarted: boolean
 }

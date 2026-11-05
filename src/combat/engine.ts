@@ -1,4 +1,81 @@
-import type { CombatantState, Encounter, Party } from '../domain/types'
+import type {
+  CombatantState,
+  Creature,
+  Encounter,
+  EncounterCreatureGroup,
+  Party,
+} from '../domain/types'
+
+export function createDraftEncounter(id: string, name: string): Encounter {
+  return {
+    id,
+    name: name.trim() || 'Unnamed encounter',
+    status: 'draft',
+    creatureGroups: [],
+    creatureSnapshots: {},
+    combatants: [],
+    round: 1,
+    currentTurnIndex: 0,
+  }
+}
+
+export function addCreatureGroup(
+  encounter: Encounter,
+  creature: Creature,
+  quantity: number,
+  createId: () => string,
+): Encounter {
+  if (encounter.status !== 'draft') throw new Error('Only draft encounters can be edited.')
+
+  const count = Math.min(Math.max(Math.floor(quantity) || 1, 1), 12)
+  const snapshot = encounter.creatureSnapshots[creature.id] ?? structuredClone(creature)
+  const group: EncounterCreatureGroup = {
+    id: createId(),
+    creatureId: creature.id,
+    quantity: count,
+    initiative: null,
+  }
+
+  return {
+    ...encounter,
+    creatureGroups: [...encounter.creatureGroups, group],
+    creatureSnapshots: {
+      ...encounter.creatureSnapshots,
+      [creature.id]: snapshot,
+    },
+  }
+}
+
+export function updateCreatureGroup(
+  encounter: Encounter,
+  groupId: string,
+  update: Partial<Pick<EncounterCreatureGroup, 'quantity' | 'initiative'>>,
+): Encounter {
+  if (encounter.status !== 'draft') throw new Error('Only draft encounters can be edited.')
+
+  return {
+    ...encounter,
+    creatureGroups: encounter.creatureGroups.map((group) =>
+      group.id === groupId
+        ? {
+            ...group,
+            ...(update.quantity !== undefined
+              ? { quantity: Math.min(Math.max(Math.floor(update.quantity) || 1, 1), 12) }
+              : {}),
+            ...(update.initiative !== undefined ? { initiative: update.initiative } : {}),
+          }
+        : group,
+    ),
+  }
+}
+
+export function removeCreatureGroup(encounter: Encounter, groupId: string): Encounter {
+  if (encounter.status !== 'draft') throw new Error('Only draft encounters can be edited.')
+  return {
+    ...encounter,
+    creatureGroups: encounter.creatureGroups.filter((group) => group.id !== groupId),
+  }
+}
 
 export function sortCombatants(combatants: CombatantState[]): CombatantState[] {
   return [...combatants].sort((first, second) => {
@@ -14,11 +91,29 @@ export function startEncounter(
   pcInitiatives: Record<string, number>,
   createId: () => string,
 ): Encounter {
+  if (encounter.status !== 'draft') {
+    throw new Error('Only draft encounters can be started.')
+  }
+  if (encounter.creatureGroups.length === 0) {
+    throw new Error('Add at least one creature group before starting.')
+  }
+  if (party.members.length === 0) {
+    throw new Error('Choose a party with at least one player character before starting.')
+  }
+
   const characterWithoutInitiative = party.members.find(
     (member) => !Number.isFinite(pcInitiatives[member.id]),
   )
   if (characterWithoutInitiative) {
     throw new Error(`Initiative is required for ${characterWithoutInitiative.name}.`)
+  }
+  const groupWithoutInitiative = encounter.creatureGroups.find(
+    (group) => !Number.isFinite(group.initiative),
+  )
+  if (groupWithoutInitiative) {
+    const creatureName =
+      encounter.creatureSnapshots[groupWithoutInitiative.creatureId]?.name ?? 'Creature group'
+    throw new Error(`Initiative is required for ${creatureName}.`)
   }
 
   const pcCombatants: CombatantState[] = party.members.map((member) => ({
@@ -28,8 +123,31 @@ export function startEncounter(
     name: member.name,
     initiative: pcInitiatives[member.id] ?? null,
   }))
+  const creatureCombatants = encounter.creatureGroups.flatMap((group) => {
+    const creature = encounter.creatureSnapshots[group.creatureId]
+    if (!creature) throw new Error(`Creature data is missing for ${group.creatureId}.`)
+    const siblingGroups = encounter.creatureGroups.filter(
+      (candidate) => candidate.creatureId === group.creatureId,
+    )
+    const groupNumber = siblingGroups.findIndex((candidate) => candidate.id === group.id) + 1
+    const useGroupNumber = siblingGroups.length > 1
+
+    return Array.from({ length: group.quantity }, (_, index) => ({
+      id: createId(),
+      type: 'creature' as const,
+      refId: group.creatureId,
+      groupId: group.id,
+      name: `${creature.name}${useGroupNumber ? ` (Group ${groupNumber})` : ''}${
+        group.quantity > 1 ? ` ${index + 1}` : ''
+      }`,
+      initiative: group.initiative,
+      currentHp: creature.hpAverage,
+      maxHp: creature.hpAverage,
+      ac: creature.ac,
+    }))
+  })
   const sortedCombatants = sortCombatants([
-    ...encounter.combatants.filter((combatant) => combatant.type !== 'pc'),
+    ...creatureCombatants,
     ...pcCombatants,
   ])
   const firstReadyIndex = sortedCombatants.findIndex(
@@ -42,12 +160,58 @@ export function startEncounter(
     combatants: sortedCombatants,
     currentTurnIndex: Math.max(firstReadyIndex, 0),
     round: 1,
-    isStarted: true,
+    status: 'active',
+  }
+}
+
+export function pauseEncounter(encounter: Encounter): Encounter {
+  return encounter.status === 'active' ? { ...encounter, status: 'paused' } : encounter
+}
+
+export function activateEncounter(encounters: Encounter[], encounterId: string): Encounter[] {
+  const selected = encounters.find((encounter) => encounter.id === encounterId)
+  if (!selected || (selected.status !== 'paused' && selected.status !== 'active')) {
+    throw new Error('Only paused encounters can be resumed.')
+  }
+  return encounters.map((encounter) =>
+    encounter.id === encounterId
+      ? { ...encounter, status: 'active' }
+      : encounter.status === 'active'
+        ? { ...encounter, status: 'paused' }
+        : encounter,
+  )
+}
+
+export function completeEncounter(encounter: Encounter): Encounter {
+  if (encounter.status !== 'active' && encounter.status !== 'paused') {
+    throw new Error('Only active or paused encounters can be completed.')
+  }
+  return { ...encounter, status: 'complete' }
+}
+
+export function duplicateEncounter(
+  encounter: Encounter,
+  createId: () => string,
+): Encounter {
+  return {
+    ...encounter,
+    id: createId(),
+    status: 'draft',
+    partyId: undefined,
+    creatureGroups: encounter.creatureGroups.map((group) => ({
+      ...group,
+      id: createId(),
+      initiative: null,
+    })),
+    creatureSnapshots: structuredClone(encounter.creatureSnapshots),
+    combatants: [],
+    round: 1,
+    currentTurnIndex: 0,
   }
 }
 
 export function nextTurn(encounter: Encounter): Encounter {
-  if (!encounter.isStarted || encounter.combatants.length === 0) {
+  if (encounter.status !== 'active' || encounter.combatants.length === 0) {
     return encounter
   }
 

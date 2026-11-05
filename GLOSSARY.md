@@ -13,12 +13,24 @@ A player-controlled adventurer who belongs to an adventuring party and may take 
 _Avoid_: Player (the person at the table), character (when the distinction matters)
 
 **Creature**:
-A non-player entity represented by combat statistics that can be included in an encounter.
+A reusable non-player entity represented by combat statistics and managed independently of encounters.
 _Avoid_: Monster (unless specifically referring to a monster in source material)
 
 **Encounter**:
-A prepared or active combat scenario containing combatants and their combat order.
+A one-time combat scenario that moves from draft preparation through a live run to completion. It preserves encounter-specific copies of its creatures and can be paused and resumed.
 _Avoid_: Battle (when referring to the saved scenario)
+
+**Creature Snapshot**:
+The copy of a creature's combat data captured for an encounter when that creature is first added. Changes to the reusable creature do not alter an existing encounter's snapshot.
+_Avoid_: Live creature reference
+
+**Creature Group**:
+A set of one creature type in an encounter, with a chosen quantity and a shared initiative result. Each creature in the group remains an individual combatant with its own hit points.
+_Avoid_: Creature stack
+
+**Encounter Status**:
+An encounter's lifecycle state: Draft, Active, Paused, or Complete.
+_Avoid_: Encounter mode
 
 **Combatant**:
 A player character or creature participating in an encounter.
@@ -29,7 +41,7 @@ A combatant's relative position in the turn order, usually determined at the sta
 _Avoid_: Turn order (the full ordered list)
 
 **Initiative Group**:
-A set of combatants that share one initiative result.
+A set of combatants that share one initiative result; creature groups are encounter-specific sets of the same creature type.
 _Avoid_: Group (when referring to a saved collection of combatants)
 
 **Turn**:
