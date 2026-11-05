@@ -265,13 +265,9 @@ function App() {
         ))}
       </nav>
       <section
-        className={`grid grid-cols-1 items-start gap-5 ${
-          workspace === 'combat'
-            ? 'xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]'
-            : ''
-        }`}
+        className="grid grid-cols-1 items-start gap-5"
       >
-        <div className="space-y-5">
+        <div className="space-y-5" hidden={workspace === 'combat'}>
           <div hidden={workspace !== 'parties'}>
             <PartyPage
               parties={parties}
