@@ -151,7 +151,6 @@ export function CombatPage({
                           />
                         </span>
                         <span className="inline-flex items-center gap-1 text-muted">
-                          <span className="text-xs">AC</span>
                           <strong className="text-ink">{combatant.ac}</strong>
                           <Shield
                             aria-hidden="true"
