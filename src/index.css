@@ -26,9 +26,9 @@
   :root[data-theme='dark'] {
     color-scheme: dark;
     --app-night: #0d160b;
-    --app-panel: color-mix(in srgb, #0d160b 96%, #f8cdcd);
-    --app-raised: color-mix(in srgb, #0d160b 94%, #f8cdcd);
-    --app-input: color-mix(in srgb, #0d160b 88%, #f8cdcd);
+    --app-panel: color-mix(in srgb, #0d160b 94%, #f8cdcd);
+    --app-raised: color-mix(in srgb, #0d160b 90%, #f8cdcd);
+    --app-input: color-mix(in srgb, #0d160b 82%, #f8cdcd);
     --app-ink: #f7f7f2;
     --app-muted: color-mix(in srgb, #f7f7f2 72%, #0d160b);
     --app-dim: color-mix(in srgb, #f7f7f2 50%, #0d160b);

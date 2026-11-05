@@ -106,7 +106,7 @@ export function CombatPage({
                   className={`grid grid-cols-[auto_auto_minmax(0,1fr)] items-center gap-3 border p-3 sm:grid-cols-[auto_auto_minmax(0,1fr)_auto] sm:p-4 ${
                     index === encounter.currentTurnIndex
                       ? 'border-accent/50 bg-accent-soft'
-                      : 'border-line bg-panel'
+                      : 'border-line bg-raised'
                   } ${combatant.isDefeated ? 'opacity-50' : ''}`}
                   key={combatant.id}
                 >
