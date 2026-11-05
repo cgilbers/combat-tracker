@@ -207,17 +207,11 @@ function App() {
   const activeCombatant = encounter?.combatants[encounter.currentTurnIndex]
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12 lg:px-12">
-      <header className="mb-8 flex items-start justify-between gap-6 border-b border-line pb-7 sm:mb-10">
-        <div>
-          <p className="mb-2 font-mono text-[11px] tracking-[1.1px] text-lime">FIELD NOTES / 01</p>
-          <h1 className="font-display text-4xl leading-tight font-medium text-ink sm:text-5xl">
-            Initiative, at a glance.
-          </h1>
-          <p className="mt-3 max-w-lg text-sm text-muted">
-            A quiet command deck for the messy middle of a fight.
-          </p>
-        </div>
+    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8 lg:px-12">
+      <header className="mb-5 flex items-center justify-between gap-4 border-b border-line pb-3">
+        <h1 className="font-display text-2xl font-medium text-ink">
+          Combat Tracker
+        </h1>
         {workspace === 'combat' && (
           <div className="grid size-16 shrink-0 content-center justify-items-center border border-line sm:size-20">
             <span className="font-mono text-[10px] tracking-[1px] text-muted">ROUND</span>
