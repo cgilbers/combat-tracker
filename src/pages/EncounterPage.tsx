@@ -21,6 +21,8 @@ type EncounterPageProps = {
   onAddCreatureGroup: (creatureId: string, quantity: number) => void
   onUpdateCreatureQuantity: (groupId: string, value: string) => void
   onUpdateGroupInitiative: (groupId: string, value: string) => void
+  onRollGroupInitiative: (groupId: string) => void
+  onRollAllGroupInitiatives: () => void
   onRemoveGroup: (groupId: string) => void
   onStartEncounter: (party: Party, initiatives: Record<string, string>) => void
   onResumeEncounter: (encounter: Encounter) => void
@@ -41,6 +43,8 @@ export function EncounterPage({
   onAddCreatureGroup,
   onUpdateCreatureQuantity,
   onUpdateGroupInitiative,
+  onRollGroupInitiative,
+  onRollAllGroupInitiatives,
   onRemoveGroup,
   onStartEncounter,
   onResumeEncounter,
@@ -235,13 +239,24 @@ export function EncounterPage({
                   Create or import creatures in Creature Library before adding them to an encounter.
                 </p>
               )}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h4 className="font-mono text-[10px] tracking-[1px] text-muted">
+                  CREATURE GROUPS
+                </h4>
+                <Button
+                  onClick={onRollAllGroupInitiatives}
+                  disabled={encounter.creatureGroups.length === 0}
+                >
+                  Roll all creature initiative
+                </Button>
+              </div>
               <div className="space-y-3">
                 {encounter.creatureGroups.map((group, index) => {
                   const creature = encounter.creatureSnapshots[group.creatureId]
                   return (
                     <div
                       key={group.id}
-                      className="grid grid-cols-1 gap-3 border border-line p-3 sm:grid-cols-[minmax(0,1fr)_6rem_7rem_auto] sm:items-end"
+                      className="grid grid-cols-1 gap-3 border border-line p-3 sm:grid-cols-[minmax(0,1fr)_6rem_minmax(9rem,auto)_auto_auto] sm:items-end"
                     >
                       <div>
                         <strong className="block text-sm text-ink">
@@ -275,6 +290,12 @@ export function EncounterPage({
                           }
                         />
                       </FieldLabel>
+                      <Button
+                        aria-label={`Roll initiative for ${creature?.name ?? 'creature'} group ${index + 1}`}
+                        onClick={() => onRollGroupInitiative(group.id)}
+                      >
+                        Roll
+                      </Button>
                       <Button variant="danger" onClick={() => onRemoveGroup(group.id)}>
                         Remove group
                       </Button>

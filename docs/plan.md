@@ -14,6 +14,7 @@ The app is DM-first and local-first. It does not require accounts, a backend, cl
 - Encounter-specific creature stat editing is a separate workflow and changes only that encounter's snapshot. Creature groups have a creature type, quantity, and shared initiative; each member remains an individual combatant with separate HP.
 - Creature Library, Encounter preparation, and Combat are separate top-level workspaces. Encounters transition Draft → Active → Paused → Complete in the same saved record; at most one encounter is Active, switching runs pauses the previous one, and reload restores an Active run as Paused. Completed encounters remain history and can be duplicated into a fresh Draft with the same snapshots and composition but no run state.
 - Creatures have app-managed combat statistics and HP. Creature initiative can be rolled automatically, with group initiative supported; the DM can edit results before combat starts.
+- Initiative ties put PCs before creatures; ties within either side preserve the party or creature-group roster order.
 - The combat rules engine is pure TypeScript, independent of React and persistence.
 - IndexedDB is the durable local source of truth. The app remains useful offline; SRD data fetched while online is cached locally.
 - SRD import is part of the first release. Only SRD content may be bundled, and attribution/licensing must be documented.
@@ -55,8 +56,8 @@ Work in independently verifiable slices. Preserve the existing working flow whil
 
 ### Phase 2: Finish initiative and the normal combat loop
 
-1. Keep PC initiative manual. Add creature `d20 + Dexterity modifier` rolls and one roll per creature group, editable before combat begins.
-2. Define deterministic behavior for tied initiatives and validate initiative input.
+1. Keep PC initiative manual. Roll creature `d20 + Dexterity modifier` once per creature group, with controls to roll an individual group or all groups; results remain editable before combat begins.
+2. Resolve initiative ties with PCs before creatures, preserving roster order within each side; validate initiative input.
 3. Complete encounter lifecycle transitions, including one active run, pause/resume, completion, reload-to-paused, and duplication of completed encounters.
 4. Complete combatant ordering, active-turn behavior, round rollover, defeated-combatant handling, and creature HP bounds in the pure combat engine.
 5. Keep creature AC visible during combat, provide access to the encounter's creature snapshot, and keep PC HP/AC clearly marked as table-tracked.

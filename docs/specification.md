@@ -92,7 +92,8 @@ Design an OCR adapter so cloud OCR can be added later without frontend changes.
 - Creatures: auto-roll (`d20 + Dex mod`)  
 - Group initiative:
   - Roll once per group  
-  - Editable before rolling  
+  - Results can be edited before combat starts
+- Ties: PCs act before creatures; ties within the same side preserve party or creature-group order.
 
 #### During Combat
 - Track initiative  
