@@ -7,6 +7,8 @@ import {
   duplicateEncounter,
   nextTurn,
   pauseEncounter,
+  rollAllCreatureGroupInitiatives,
+  rollCreatureGroupInitiative,
   removeCreatureGroup,
   startEncounter,
   updateCreatureGroup,
@@ -172,6 +174,68 @@ describe('combat engine', () => {
     )).toEqual([5, 10, 10])
   })
 
+  it('rolls one d20 plus Dexterity for each group and shares that result with its members', () => {
+    const group = { ...encounter.creatureGroups[0], quantity: 3, initiative: null }
+    const draft = { ...encounter, creatureGroups: [group] }
+    let rolls = 0
+    const rolled = rollCreatureGroupInitiative(draft, group.id, () => {
+      rolls += 1
+      return 16
+    })
+    let id = 0
+    const started = startEncounter(rolled, party, { 'pc-1': 12 }, () => `combatant-${id++}`)
+
+    expect(rolls).toBe(1)
+    expect(rolled.creatureGroups[0].initiative).toBe(17)
+    expect(
+      started.combatants
+        .filter((combatant) => combatant.type === 'creature')
+        .map((combatant) => combatant.initiative),
+    ).toEqual([17, 17, 17])
+  })
+
+  it('rolls each group once when rolling all creature groups', () => {
+    const withSecondGroup = addCreatureGroup(encounter, creature, 2, () => 'group-2')
+    let roll = 0
+    const rolled = rollAllCreatureGroupInitiatives(withSecondGroup, () => [20, 1][roll++])
+
+    expect(roll).toBe(2)
+    expect(rolled.creatureGroups.map((group) => group.initiative)).toEqual([21, 2])
+  })
+
+  it('rejects invalid d20 results', () => {
+    expect(() =>
+      rollCreatureGroupInitiative(encounter, 'group-1', () => 21),
+    ).toThrow('A d20 roll must be an integer from 1 to 20.')
+  })
+
+  it('orders tied PCs before creatures and preserves roster order within each type', () => {
+    const tiedGroup = { ...encounter.creatureGroups[0], quantity: 2, initiative: 12 }
+    const tiedParty = {
+      ...party,
+      members: [
+        ...party.members,
+        { id: 'pc-2', name: 'Tarin' },
+      ],
+    }
+    const started = startEncounter(
+      { ...encounter, creatureGroups: [tiedGroup] },
+      tiedParty,
+      { 'pc-1': 12, 'pc-2': 12 },
+      (() => {
+        let id = 0
+        return () => `tied-${id++}`
+      })(),
+    )
+
+    expect(started.combatants.map((combatant) => combatant.name)).toEqual([
+      'Mira',
+      'Tarin',
+      'Ash Wyrmling 1',
+      'Ash Wyrmling 2',
+    ])
+  })
+
   it('does not add combatants to a draft before it starts', () => {
     expect(encounter.combatants).toHaveLength(0)
     expect(encounter.partyId).toBeUndefined()
@@ -197,6 +261,28 @@ describe('combat engine', () => {
     expect(next.combatants[next.currentTurnIndex].name).toBe('Mira')
     expect(wrapped.round).toBe(2)
     expect(wrapped.currentTurnIndex).toBe(0)
+  })
+
+  it('skips defeated combatants and rolls the round over after the last ready combatant', () => {
+    const group = { ...encounter.creatureGroups[0], quantity: 2 }
+    let id = 0
+    const started = startEncounter(
+      { ...encounter, creatureGroups: [group] },
+      party,
+      { 'pc-1': 12 },
+      () => `combatant-${id++}`,
+    )
+    const secondCreature = started.combatants.find(
+      (combatant) => combatant.name.endsWith('2'),
+    )
+    const withDefeatedCreature = updateCreatureHp(started, secondCreature!.id, -10)
+
+    const next = nextTurn(withDefeatedCreature)
+    const wrapped = nextTurn(next)
+
+    expect(next.combatants[next.currentTurnIndex].name).toBe('Mira')
+    expect(wrapped.combatants[wrapped.currentTurnIndex].name).toBe('Ash Wyrmling 1')
+    expect(wrapped.round).toBe(2)
   })
 
   it('clamps creature HP and marks a creature defeated at zero', () => {

@@ -69,6 +69,43 @@ export function updateCreatureGroup(
   }
 }
 
+export function rollCreatureGroupInitiative(
+  encounter: Encounter,
+  groupId: string,
+  rollD20: () => number = () => Math.floor(Math.random() * 20) + 1,
+): Encounter {
+  if (encounter.status !== 'draft') throw new Error('Only draft encounters can be edited.')
+
+  const group = encounter.creatureGroups.find((candidate) => candidate.id === groupId)
+  if (!group) throw new Error(`Creature group ${groupId} was not found.`)
+
+  const creature = encounter.creatureSnapshots[group.creatureId]
+  if (!creature) throw new Error(`Creature data is missing for ${group.creatureId}.`)
+  if (!Number.isFinite(creature.dexterityModifier)) {
+    throw new Error(`Dexterity modifier is invalid for ${creature.name}.`)
+  }
+
+  const dieResult = rollD20()
+  if (!Number.isInteger(dieResult) || dieResult < 1 || dieResult > 20) {
+    throw new Error('A d20 roll must be an integer from 1 to 20.')
+  }
+
+  return updateCreatureGroup(encounter, groupId, {
+    initiative: dieResult + creature.dexterityModifier,
+  })
+}
+
+export function rollAllCreatureGroupInitiatives(
+  encounter: Encounter,
+  rollD20?: () => number,
+): Encounter {
+  return encounter.creatureGroups.reduce(
+    (updatedEncounter, group) =>
+      rollCreatureGroupInitiative(updatedEncounter, group.id, rollD20),
+    encounter,
+  )
+}
+
 export function removeCreatureGroup(encounter: Encounter, groupId: string): Encounter {
   if (encounter.status !== 'draft') throw new Error('Only draft encounters can be edited.')
   return {
@@ -78,11 +115,31 @@ export function removeCreatureGroup(encounter: Encounter, groupId: string): Enco
 }
 
 export function sortCombatants(combatants: CombatantState[]): CombatantState[] {
-  return [...combatants].sort((first, second) => {
-    if (first.initiative === null) return 1
-    if (second.initiative === null) return -1
-    return second.initiative - first.initiative
-  })
+  return combatants
+    .map((combatant, index) => ({ combatant, index }))
+    .sort((first, second) => {
+      if (
+        first.combatant.initiative === null &&
+        second.combatant.initiative === null
+      ) {
+        return first.index - second.index
+      }
+      if (first.combatant.initiative === null) return 1
+      if (second.combatant.initiative === null) return -1
+
+      const typeOrder =
+        first.combatant.type === second.combatant.type
+          ? 0
+          : first.combatant.type === 'pc'
+            ? -1
+            : 1
+      return (
+        second.combatant.initiative - first.combatant.initiative ||
+        typeOrder ||
+        first.index - second.index
+      )
+    })
+    .map(({ combatant }) => combatant)
 }
 
 export function startEncounter(

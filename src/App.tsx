@@ -8,6 +8,8 @@ import {
   duplicateEncounter as duplicateEncounterRecord,
   nextTurn,
   pauseEncounter,
+  rollAllCreatureGroupInitiatives,
+  rollCreatureGroupInitiative,
   removeCreatureGroup,
   startEncounter,
   updateCreatureGroup,
@@ -100,6 +102,14 @@ function App() {
         initiative: value === '' ? null : Number(value),
       }),
     )
+  }
+
+  const rollGroupInitiative = (groupId: string) => {
+    if (encounter) updateEncounter(rollCreatureGroupInitiative(encounter, groupId))
+  }
+
+  const rollAllGroupInitiatives = () => {
+    if (encounter) updateEncounter(rollAllCreatureGroupInitiatives(encounter))
   }
 
   const removeGroup = (groupId: string) => {
@@ -347,6 +357,8 @@ function App() {
               onAddCreatureGroup={addCreatureToEncounter}
               onUpdateCreatureQuantity={updateCreatureQuantity}
               onUpdateGroupInitiative={updateGroupInitiative}
+              onRollGroupInitiative={rollGroupInitiative}
+              onRollAllGroupInitiatives={rollAllGroupInitiatives}
               onRemoveGroup={removeGroup}
               onStartEncounter={beginEncounter}
               onResumeEncounter={resumeEncounter}
