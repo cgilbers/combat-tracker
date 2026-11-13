@@ -4,9 +4,11 @@ import {
   addCreatureGroup,
   completeEncounter,
   createDraftEncounter,
+  delayCombatant,
   duplicateEncounter,
   nextTurn,
   pauseEncounter,
+  resumeCombatant,
   rollAllCreatureGroupInitiatives,
   rollCreatureGroupInitiative,
   removeCreatureGroup,
@@ -313,6 +315,192 @@ describe('combat engine', () => {
     })
     expect(updatedPc).not.toHaveProperty('currentHp')
     expect(updatedPc).not.toHaveProperty('ac')
+  })
+
+  it('delays the current player turn and removes it from the active turn order', () => {
+    const started = startEncounter(
+      {
+        ...encounter,
+        creatureGroups: [{ ...encounter.creatureGroups[0], initiative: 10 }],
+      },
+      party,
+      { 'pc-1': 12 },
+      (() => {
+        let id = 0
+        return () => `combatant-${id++}`
+      })(),
+    )
+    const delayed = delayCombatant(started, started.combatants[0].id)
+
+    expect(started.combatants[0].name).toBe('Mira')
+    expect(delayed.combatants.map((combatant) => combatant.name)).toEqual(['Ash Wyrmling'])
+    expect(delayed.delayedCombatants?.[0]).toMatchObject({
+      name: 'Mira',
+      initiative: null,
+      originalInitiative: 12,
+    })
+    expect(delayed.currentTurnIndex).toBe(0)
+  })
+
+  it('allows the last active player to delay and resume when no combatants remain', () => {
+    let id = 0
+    const started = startEncounter(
+      encounter,
+      party,
+      { 'pc-1': 12 },
+      () => `last-turn-${id++}`,
+    )
+    const creatureId = started.combatants.find(
+      (combatant) => combatant.type === 'creature',
+    )!.id
+    const defeatedEncounter = updateCreatureHp(started, creatureId, -10)
+    const playerTurn = nextTurn(defeatedEncounter)
+    const player = playerTurn.combatants[playerTurn.currentTurnIndex]
+    const delayed = delayCombatant(playerTurn, player.id)
+
+    expect(delayed.round).toBe(playerTurn.round + 1)
+    expect(delayed.combatants).toHaveLength(1)
+    expect(delayed.combatants[0].isDefeated).toBe(true)
+    expect(delayed.delayedCombatants?.map((combatant) => combatant.id)).toEqual([
+      player.id,
+    ])
+
+    const resumed = resumeCombatant(delayed, player.id)
+    expect(resumed.combatants[resumed.currentTurnIndex].id).toBe(player.id)
+    expect(resumed.delayedCombatants).toEqual([])
+  })
+
+  it('resumes a delayed combatant after any selected combatant and rejects missing positions', () => {
+    const started = nextTurn(startEncounter(
+      { ...encounter, creatureGroups: [{ ...encounter.creatureGroups[0], quantity: 1, initiative: 18 }] },
+      {
+        ...party,
+        members: [
+          { id: 'pc-1', name: 'Mira', notes: 'Wizard' },
+          { id: 'pc-2', name: 'Tarin', notes: 'Fighter' },
+        ],
+      },
+      { 'pc-1': 12, 'pc-2': 25 },
+      (() => {
+        let id = 0
+        return () => `combatant-${id++}`
+      })(),
+    ))
+    const creature = started.combatants.find((combatant) => combatant.type === 'creature')!
+    const tarin = started.combatants.find((combatant) => combatant.name === 'Tarin')!
+    const delayed = delayCombatant(started, creature.id)
+
+    expect(() => resumeCombatant(delayed, delayed.delayedCombatants![0].id, 'missing-combatant')).toThrow(
+      'Combatant missing-combatant was not found.',
+    )
+
+    const resumed = resumeCombatant(delayed, delayed.delayedCombatants![0].id, tarin.id)
+    expect(resumed.combatants.map((combatant) => combatant.name)).toEqual([
+      'Tarin',
+      'Ash Wyrmling',
+      'Mira',
+    ])
+  })
+
+  it('keeps a delayed player pending across a round and allows them to resume in the next round', () => {
+    const started = nextTurn(startEncounter(
+      { ...encounter, creatureGroups: [{ ...encounter.creatureGroups[0], quantity: 1, initiative: 10 }] },
+      {
+        ...party,
+        members: [
+          { id: 'pc-1', name: 'Mira', notes: 'Wizard' },
+          { id: 'pc-2', name: 'Tarin', notes: 'Fighter' },
+        ],
+      },
+      { 'pc-1': 18, 'pc-2': 25 },
+      (() => {
+        let id = 0
+        return () => `combatant-${id++}`
+      })(),
+    ))
+    const mira = started.combatants.find((combatant) => combatant.name === 'Mira')!
+    const delayed = delayCombatant(started, mira.id)
+    const wrapped = nextTurn(delayed)
+
+    expect(wrapped.round).toBe(2)
+    expect(wrapped.delayedCombatants?.[0]).toMatchObject({
+      id: mira.id,
+      originalInitiative: 18,
+      delayRound: undefined,
+    })
+    expect(wrapped.combatants.map((combatant) => combatant.initiative)).toEqual([25, 10])
+
+    const tarin = wrapped.combatants.find((combatant) => combatant.name === 'Tarin')!
+    const resumed = resumeCombatant(wrapped, mira.id, tarin.id)
+    expect(resumed.combatants.map((combatant) => combatant.name)).toEqual([
+      'Tarin',
+      'Mira',
+      'Ash Wyrmling',
+    ])
+    expect(resumed.combatants[1]).toMatchObject({
+      initiative: 25,
+      originalInitiative: undefined,
+      delayRound: 2,
+    })
+    expect(resumed.delayedCombatants).toEqual([])
+    const delayedAgain = delayCombatant(nextTurn(resumed), mira.id)
+    expect(delayedAgain.delayedCombatants?.map((combatant) => combatant.id)).toEqual([
+      mira.id,
+    ])
+  })
+
+  it('lets a delayed player resume after a combatant who already acted this round', () => {
+    const threePlayerParty = {
+      ...party,
+      members: [
+        { id: 'pc-1', name: 'Player 1' },
+        { id: 'pc-2', name: 'Player 2' },
+        { id: 'pc-3', name: 'Player 3' },
+      ],
+    }
+    let id = 0
+    const started = startEncounter(
+      { ...encounter, creatureGroups: [{ ...encounter.creatureGroups[0], initiative: 1 }] },
+      threePlayerParty,
+      { 'pc-1': 21, 'pc-2': 15, 'pc-3': 10 },
+      () => `round-test-${id++}`,
+    )
+    const withCreatureDefeated = {
+      ...started,
+      combatants: started.combatants.map((combatant) =>
+        combatant.type === 'creature' ? { ...combatant, isDefeated: true } : combatant,
+      ),
+    }
+    const player1 = started.combatants.find((combatant) => combatant.name === 'Player 1')!
+    const player2 = started.combatants.find((combatant) => combatant.name === 'Player 2')!
+    const player3 = started.combatants.find((combatant) => combatant.name === 'Player 3')!
+    const afterPlayer1 = nextTurn(withCreatureDefeated)
+    const afterPlayer2 = nextTurn(afterPlayer1)
+    const delayedPlayer3 = delayCombatant(afterPlayer2, player3.id)
+
+    expect(delayedPlayer3.round).toBe(2)
+    expect(delayedPlayer3.combatants[delayedPlayer3.currentTurnIndex].id).toBe(player1.id)
+
+    const afterPlayer1NextRound = nextTurn(delayedPlayer3)
+    expect(afterPlayer1NextRound.combatants[afterPlayer1NextRound.currentTurnIndex].id).toBe(
+      player2.id,
+    )
+
+    const resumedPlayer3 = resumeCombatant(afterPlayer1NextRound, player3.id)
+
+    expect(resumedPlayer3.combatants.map((combatant) => combatant.name)).toEqual([
+      'Player 1',
+      'Player 3',
+      'Player 2',
+      'Ash Wyrmling',
+    ])
+    expect(resumedPlayer3.combatants[resumedPlayer3.currentTurnIndex].id).toBe(player3.id)
+    expect(resumedPlayer3.combatants[1]).toMatchObject({
+      initiative: 21,
+      originalInitiative: undefined,
+    })
+    const afterPlayer3 = nextTurn(resumedPlayer3)
+    expect(afterPlayer3.combatants[afterPlayer3.currentTurnIndex].id).toBe(player2.id)
   })
 
   it('pauses and resumes encounters while allowing only one active run', () => {
