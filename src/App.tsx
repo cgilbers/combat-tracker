@@ -5,9 +5,11 @@ import {
   addCreatureGroup,
   completeEncounter,
   createDraftEncounter,
+  delayCombatant,
   duplicateEncounter as duplicateEncounterRecord,
   nextTurn,
   pauseEncounter,
+  resumeCombatant,
   rollAllCreatureGroupInitiatives,
   rollCreatureGroupInitiative,
   removeCreatureGroup,
@@ -172,6 +174,16 @@ function App() {
 
   const advanceTurn = () => {
     if (encounter) updateEncounter(nextTurn(encounter))
+  }
+
+  const delayCurrentTurn = (combatantId: string) => {
+    if (encounter) updateEncounter(delayCombatant(encounter, combatantId))
+  }
+
+  const resumeDelayedTurn = (combatantId: string) => {
+    if (encounter) {
+      updateEncounter(resumeCombatant(encounter, combatantId))
+    }
   }
 
   const adjustCreatureHp = (
@@ -374,6 +386,8 @@ function App() {
             activeCombatantName={activeCombatant?.name}
             activeCombatantInitiative={activeCombatant?.initiative}
             onNextTurn={advanceTurn}
+            onDelayTurn={delayCurrentTurn}
+            onResumeTurn={resumeDelayedTurn}
             onAdjustCreatureHp={adjustCreatureHp}
           />
         </div>

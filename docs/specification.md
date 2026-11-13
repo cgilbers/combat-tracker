@@ -224,14 +224,13 @@ Combatants can:
   - Marked as “delayed”  
 
 - **Resume their turn**
-  - Choose a combatant to act after  
+  - Resume immediately before the current combatant
   - Inserted into initiative order  
   - Initiative value updated to match new position  
 
 Rules:
-- Cannot act before original initiative  
-- Can only re-enter once per round  
-- Reset delay state at round end  
+- Delayed combatants remain pending across round boundaries until resumed.
+- A player may delay again after resuming, including within the same round.
 
 ---
 

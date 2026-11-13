@@ -10,6 +10,8 @@ type CombatPageProps = {
   activeCombatantName?: string
   activeCombatantInitiative?: number | null
   onNextTurn: () => void
+  onDelayTurn: (combatantId: string) => void
+  onResumeTurn: (combatantId: string) => void
   onAdjustCreatureHp: (
     combatantId: string,
     direction: 'damage' | 'heal',
@@ -22,9 +24,13 @@ export function CombatPage({
   activeCombatantName,
   activeCombatantInitiative,
   onNextTurn,
+  onDelayTurn,
+  onResumeTurn,
   onAdjustCreatureHp,
 }: CombatPageProps) {
   const [selectedCombatantId, setSelectedCombatantId] = useState('')
+  const currentCombatant =
+    encounter?.combatants[encounter.currentTurnIndex]
   const creatureCombatants =
     encounter?.combatants.filter((combatant) => combatant.type === 'creature') ?? []
   const selectedCombatant =
@@ -66,7 +72,7 @@ export function CombatPage({
             This encounter is paused. Return to Encounters to resume it.
           </p>
         )}
-        {encounter?.status === 'active' && (
+        {encounter?.status === 'active' && currentCombatant && (
           <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-4 border border-accent/50 bg-accent-soft p-4 sm:p-5">
             <div className="flex min-w-0 items-center gap-4">
               <div className="min-w-0">
@@ -86,17 +92,33 @@ export function CombatPage({
                 </strong>
               </div>
             </div>
-            <Button variant="primary" onClick={onNextTurn}>
-              Next turn <span aria-hidden="true">→</span>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() => currentCombatant && onDelayTurn(currentCombatant.id)}
+                disabled={currentCombatant.isDefeated}
+              >
+                Delay turn
+              </Button>
+              <Button variant="primary" onClick={onNextTurn}>
+                Next turn <span aria-hidden="true">→</span>
+              </Button>
+            </div>
           </div>
         )}
-        {encounter && encounter.combatants.length > 0 && (
+        {encounter &&
+          (encounter.combatants.length > 0 ||
+            (encounter.status === 'active' &&
+              (encounter.delayedCombatants?.length ?? 0) > 0)) && (
           <div className="flex min-h-0 flex-1 flex-col">
             <h3 className="mb-3 font-mono text-[10px] tracking-[1px] text-muted">
               INITIATIVE ORDER
             </h3>
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+              {encounter.status === 'active' && !currentCombatant && (
+                <p className="border border-line bg-raised p-3 text-sm text-muted">
+                  No active combatants. Resume a delayed turn to continue.
+                </p>
+              )}
               {encounter.combatants.map((combatant, index) => (
                 <InitiativeRow
                   key={combatant.id}
@@ -108,6 +130,28 @@ export function CombatPage({
                   onAdjustCreatureHp={onAdjustCreatureHp}
                 />
               ))}
+              {encounter.status === 'active' &&
+                encounter.delayedCombatants?.map((combatant) => {
+                  return (
+                    <div
+                      key={combatant.id}
+                      className="flex flex-wrap items-center gap-3 border border-accent/40 bg-raised p-3"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <strong className="block truncate text-sm text-ink">
+                          {combatant.name}
+                        </strong>
+                        <small className="text-xs text-muted">Delayed</small>
+                      </div>
+                      <Button
+                        variant="primary"
+                        onClick={() => onResumeTurn(combatant.id)}
+                      >
+                        Resume before {currentCombatant?.name ?? 'next turn'}
+                      </Button>
+                    </div>
+                  )
+                })}
             </div>
           </div>
         )}

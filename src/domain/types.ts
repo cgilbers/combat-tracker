@@ -73,6 +73,9 @@ export type CombatantState = {
   maxHp?: number
   ac?: number
   isDefeated?: boolean
+  isDelayed?: boolean
+  originalInitiative?: number | null
+  delayRound?: number
 }
 
 export type EncounterStatus = 'draft' | 'active' | 'paused' | 'complete'
@@ -92,6 +95,7 @@ export type Encounter = {
   creatureSnapshots: Record<string, Creature>
   partyId?: string
   combatants: CombatantState[]
+  delayedCombatants?: CombatantState[]
   round: number
   currentTurnIndex: number
 }

@@ -267,6 +267,130 @@ export function duplicateEncounter(
   }
 }
 
+export function delayCombatant(encounter: Encounter, combatantId: string): Encounter {
+  if (encounter.status !== 'active') {
+    return encounter
+  }
+
+  const index = encounter.combatants.findIndex((combatant) => combatant.id === combatantId)
+  if (index < 0) {
+    throw new Error(`Combatant ${combatantId} was not found.`)
+  }
+  if (index !== encounter.currentTurnIndex) {
+    throw new Error('Only the current combatant can delay their turn.')
+  }
+
+  const combatant = encounter.combatants[index]
+  if (combatant.isDelayed) {
+    return encounter
+  }
+  if (combatant.initiative === null) {
+    throw new Error(`${combatant.name} has no active initiative to delay.`)
+  }
+
+  const delayedCombatant: CombatantState = {
+    ...combatant,
+    initiative: null,
+    isDelayed: true,
+    originalInitiative: combatant.initiative,
+    delayRound: encounter.round,
+  }
+
+  const activeCombatants = encounter.combatants.filter((candidate) => candidate.id !== combatantId)
+  const hasLaterReadyCombatant = activeCombatants
+    .slice(index)
+    .some((candidate) => !candidate.isDefeated)
+  const wrapped = !hasLaterReadyCombatant
+  const nextIndex = wrapped
+    ? activeCombatants.findIndex((candidate) => !candidate.isDefeated)
+    : activeCombatants.length === 0
+      ? 0
+      : findNextReadyIndex(activeCombatants, Math.min(index - 1, activeCombatants.length - 1))
+
+  return {
+    ...encounter,
+    combatants: wrapped
+      ? activeCombatants.map((candidate) => ({
+          ...candidate,
+          originalInitiative: undefined,
+          delayRound: undefined,
+        }))
+      : activeCombatants,
+    delayedCombatants: [
+      ...(encounter.delayedCombatants ?? []).map((candidate) =>
+        wrapped ? { ...candidate, delayRound: undefined } : candidate,
+      ),
+      wrapped ? { ...delayedCombatant, delayRound: undefined } : delayedCombatant,
+    ],
+    currentTurnIndex: Math.max(nextIndex, 0),
+    round: encounter.round + (wrapped ? 1 : 0),
+  }
+}
+
+export const delayTurn = delayCombatant
+
+export function resumeCombatant(
+  encounter: Encounter,
+  combatantId: string,
+  afterCombatantId?: string,
+): Encounter {
+  if (encounter.status !== 'active') {
+    return encounter
+  }
+
+  const delayedCombatants = encounter.delayedCombatants ?? []
+  const delayedIndex = delayedCombatants.findIndex((combatant) => combatant.id === combatantId)
+  if (delayedIndex < 0) {
+    throw new Error(`Combatant ${combatantId} is not delayed.`)
+  }
+
+  const delayedCombatant = delayedCombatants[delayedIndex]
+  const resumeNow = afterCombatantId === undefined
+  const afterIndex = resumeNow
+    ? encounter.currentTurnIndex - 1
+    : encounter.combatants.findIndex((combatant) => combatant.id === afterCombatantId)
+
+  if (!resumeNow && afterIndex < 0) {
+    throw new Error(`Combatant ${afterCombatantId} was not found.`)
+  }
+
+  const insertIndex = resumeNow
+    ? Math.max(0, encounter.currentTurnIndex)
+    : afterIndex + 1
+  const currentCombatant = encounter.combatants[encounter.currentTurnIndex]
+  const previousCombatant = encounter.combatants[encounter.currentTurnIndex - 1]
+  const resumedCombatant: CombatantState = {
+    ...delayedCombatant,
+    initiative: resumeNow
+      ? previousCombatant?.initiative ??
+        currentCombatant?.initiative ??
+        delayedCombatant.originalInitiative ??
+        delayedCombatant.initiative
+      : encounter.combatants[afterIndex]?.initiative ??
+        delayedCombatant.originalInitiative ??
+        null,
+    isDelayed: false,
+    originalInitiative: undefined,
+    delayRound: encounter.round,
+  }
+
+  const updatedCombatants = [...encounter.combatants]
+  updatedCombatants.splice(insertIndex, 0, resumedCombatant)
+
+  const nextCurrentTurnIndex = resumeNow
+    ? insertIndex
+    : encounter.currentTurnIndex + (insertIndex <= encounter.currentTurnIndex ? 1 : 0)
+
+  return {
+    ...encounter,
+    combatants: updatedCombatants,
+    delayedCombatants: delayedCombatants.filter((combatant) => combatant.id !== combatantId),
+    currentTurnIndex: nextCurrentTurnIndex,
+  }
+}
+
+export const resumeTurn = resumeCombatant
+
 export function nextTurn(encounter: Encounter): Encounter {
   if (encounter.status !== 'active' || encounter.combatants.length === 0) {
     return encounter
@@ -278,10 +402,23 @@ export function nextTurn(encounter: Encounter): Encounter {
   )
   const wrapped = nextReadyIndex <= encounter.currentTurnIndex
 
+  if (!wrapped) {
+    return { ...encounter, currentTurnIndex: nextReadyIndex }
+  }
+
   return {
     ...encounter,
+    combatants: encounter.combatants.map((combatant) => ({
+      ...combatant,
+      originalInitiative: undefined,
+      delayRound: undefined,
+    })),
+    delayedCombatants: (encounter.delayedCombatants ?? []).map((combatant) => ({
+      ...combatant,
+      delayRound: undefined,
+    })),
     currentTurnIndex: nextReadyIndex,
-    round: wrapped ? encounter.round + 1 : encounter.round,
+    round: encounter.round + 1,
   }
 }
 
