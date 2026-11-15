@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from '../components/Button'
-import { FieldLabel, SelectInput } from '../components/FormControls'
+import { FieldLabel, TextInput } from '../components/FormControls'
 import { Panel } from '../components/Panel'
 import { SectionHeading } from '../components/SectionHeading'
 import {
@@ -126,16 +126,26 @@ export function CreaturePage({
   onDeleteCreature,
 }: CreaturePageProps) {
   const [selectedCreatureId, setSelectedCreatureId] = useState('')
+  const [creatureSearch, setCreatureSearch] = useState('')
+  const [isCreatureSearchOpen, setIsCreatureSearchOpen] = useState(false)
+  const [activeCreatureIndex, setActiveCreatureIndex] = useState(-1)
   const [editingCreatureId, setEditingCreatureId] = useState('')
   const [form, setForm] = useState<CreatureForm>(emptyForm)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [operationError, setOperationError] = useState('')
   const editingCreature = creatures.find((creature) => creature.id === editingCreatureId)
+  const filteredCreatures = creatures.filter((creature) =>
+    `${creature.name} ${creature.source} ${creature.type ?? ''} ${creature.ac} ${creature.hpAverage}`
+      .toLowerCase()
+      .includes(creatureSearch.trim().toLowerCase()),
+  )
 
   const beginEditing = (creature: Creature) => {
     setEditingCreatureId(creature.id)
     setSelectedCreatureId(creature.id)
+    setCreatureSearch(creature.name)
+    setIsCreatureSearchOpen(false)
     setForm(formFromCreature(creature))
     setValidationErrors([])
   }
@@ -143,9 +153,16 @@ export function CreaturePage({
   const beginCreating = () => {
     setEditingCreatureId('')
     setSelectedCreatureId('')
+    setCreatureSearch('')
+    setIsCreatureSearchOpen(false)
     setForm(emptyForm)
     setValidationErrors([])
     setOperationError('')
+  }
+
+  const selectCreatureAt = (index: number) => {
+    const creature = filteredCreatures[index]
+    if (creature) beginEditing(creature)
   }
 
   const updateForm = <K extends keyof CreatureForm>(key: K, value: CreatureForm[K]) => {
@@ -227,6 +244,7 @@ export function CreaturePage({
       setEditingCreatureId(creature.id)
       setForm(formFromCreature(creature))
       setSelectedCreatureId(creature.id)
+      setCreatureSearch(creature.name)
       setOperationError('')
     } catch {
       setOperationError('Creature could not be saved. Please try again.')
@@ -247,31 +265,106 @@ export function CreaturePage({
 
   return (
     <Panel>
-      <SectionHeading step="CREATURE" title="Creature library" count={`${creatures.length} saved`} />
-      <div className="mb-4 flex items-end gap-3">
-        <FieldLabel className="min-w-0 flex-1">
+    <SectionHeading step="CREATURE" title="Creature library" count={`${creatures.length} saved`} />
+    <div className="mb-4 flex items-end gap-3">
+      <div className="relative min-w-0 flex-1">
+        <FieldLabel>
           Select creature
-          <SelectInput
+          <TextInput
             aria-label="Select creature to edit or use"
-            value={selectedCreatureId}
-            onChange={(event) => {
-              const creature = creatures.find((item) => item.id === event.target.value)
-              if (creature) beginEditing(creature)
-              else setSelectedCreatureId('')
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={isCreatureSearchOpen}
+            aria-controls={isCreatureSearchOpen ? 'creature-library-options' : undefined}
+            aria-activedescendant={
+              isCreatureSearchOpen &&
+              activeCreatureIndex >= 0 &&
+              filteredCreatures[activeCreatureIndex]
+                ? `creature-option-${filteredCreatures[activeCreatureIndex]?.id}`
+                : undefined
+            }
+            placeholder="Search creatures..."
+            value={creatureSearch}
+            onFocus={() => {
+              setActiveCreatureIndex(-1)
+              setIsCreatureSearchOpen(true)
             }}
-          >
-            <option value="">No creature selected</option>
-            {creatures.map((creature) => (
-              <option value={creature.id} key={creature.id}>
-                {creature.name} · {creature.source.toUpperCase()} · AC {creature.ac} · {creature.hpAverage} HP
-              </option>
-            ))}
-          </SelectInput>
+            onBlur={() => setIsCreatureSearchOpen(false)}
+            onChange={(event) => {
+              setCreatureSearch(event.target.value)
+              setActiveCreatureIndex(-1)
+              setIsCreatureSearchOpen(true)
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowDown' && filteredCreatures.length > 0) {
+                event.preventDefault()
+                setIsCreatureSearchOpen(true)
+                setActiveCreatureIndex((index) =>
+                  index < filteredCreatures.length - 1 ? index + 1 : 0,
+                )
+              } else if (event.key === 'ArrowUp' && filteredCreatures.length > 0) {
+                event.preventDefault()
+                setIsCreatureSearchOpen(true)
+                setActiveCreatureIndex((index) =>
+                  index > 0 ? index - 1 : filteredCreatures.length - 1,
+                )
+              } else if (
+                event.key === 'Enter' &&
+                isCreatureSearchOpen &&
+                filteredCreatures.length > 0
+              ) {
+                event.preventDefault()
+                selectCreatureAt(activeCreatureIndex >= 0 ? activeCreatureIndex : 0)
+              } else if (event.key === 'Escape') {
+                setIsCreatureSearchOpen(false)
+                setActiveCreatureIndex(-1)
+                setCreatureSearch(
+                  creatures.find((creature) => creature.id === selectedCreatureId)?.name ?? '',
+                )
+              }
+            }}
+          />
         </FieldLabel>
-        <Button className="shrink-0" onClick={beginCreating}>
-          New creature
-        </Button>
+        {isCreatureSearchOpen && (
+          <ul
+            id="creature-library-options"
+            className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-line bg-panel p-1 shadow-lg"
+            role="listbox"
+          >
+            {filteredCreatures.length > 0 ? (
+              filteredCreatures.map((creature, index) => (
+                <li key={creature.id} role="presentation">
+                  <button
+                    id={`creature-option-${creature.id}`}
+                    className={`w-full rounded px-3 py-2 text-left font-sans text-sm text-ink hover:bg-accent/10 ${
+                      index === activeCreatureIndex ? 'bg-accent/10' : ''
+                    }`}
+                    type="button"
+                    role="option"
+                    aria-selected={creature.id === selectedCreatureId}
+                    tabIndex={-1}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => beginEditing(creature)}
+                  >
+                    <span className="block">{creature.name}</span>
+                    <span className="block text-xs text-muted">
+                      {creature.source.toUpperCase()} · AC {creature.ac} · {creature.hpAverage} HP
+                    </span>
+                  </button>
+                </li>
+              ))
+            ) : (
+              <li className="px-3 py-2 text-sm text-muted" role="presentation">
+                No matching creatures
+              </li>
+            )}
+          </ul>
+        )}
       </div>
+      <Button className="shrink-0" onClick={beginCreating}>
+        New creature
+      </Button>
+    </div>
       <SrdCreatureImporter creatures={creatures} onImportCreature={onSaveCreature} />
       <p className="mb-4 mt-5 border-t border-line pt-4 font-mono text-[10px] tracking-[.3px] text-muted">
         {editingCreature ? `Editing ${editingCreature.source.toUpperCase()} creature` : 'Creating a custom creature'}

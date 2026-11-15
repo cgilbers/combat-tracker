@@ -152,10 +152,6 @@ export function CreatureFormFields({
             Legendary resistance limit
             <TextInput aria-label="Legendary resistance limit" type="number" min="0" step="1" value={form.legendaryResistanceLimit} onChange={(event) => onUpdateField('legendaryResistanceLimit', event.target.value)} />
           </FieldLabel>
-          <label className="flex flex-row items-center justify-between gap-2 self-end border border-line bg-input px-3 py-3 font-mono text-[10px] tracking-[.3px] text-muted uppercase">
-            Has lair actions
-            <input className="size-4 accent-accent" type="checkbox" checked={form.hasLairActions} onChange={(event) => onUpdateField('hasLairActions', event.target.checked)} />
-          </label>
         </div>
       </fieldset>
       <FieldLabel className="mb-4">
