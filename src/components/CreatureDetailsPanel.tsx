@@ -140,14 +140,14 @@ function SpellSlotTracker({
             <span className="font-mono text-[9px] text-muted">LEVEL {level}</span>
             <div className="flex flex-col gap-1">
               {Array.from({ length: resource.max }, (_, index) => {
-                const isAvailable = index < available
-                const action = isAvailable ? 'spend' : 'restore'
+                const isSpent = index < resource.used
+                const action = isSpent ? 'restore' : 'spend'
                 return (
                   <button
                     key={index}
                     type="button"
-                    aria-label={`${isAvailable ? 'Spend' : 'Restore'} level ${level} spell slot ${index + 1} of ${resource.max}`}
-                    aria-pressed={isAvailable}
+                    aria-label={`${isSpent ? 'Restore' : 'Spend'} level ${level} spell slot ${index + 1} of ${resource.max}`}
+                    aria-pressed={isSpent}
                     disabled={!canAdjust}
                     className="grid size-8 place-items-center rounded-full disabled:cursor-not-allowed"
                     onClick={() => onAdjust(Number(level), action)}
@@ -155,7 +155,7 @@ function SpellSlotTracker({
                     <span
                       aria-hidden="true"
                       className={`size-3 rounded-full ${
-                        isAvailable
+                        isSpent
                           ? 'bg-accent'
                           : 'border border-muted bg-transparent'
                       }`}

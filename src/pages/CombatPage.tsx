@@ -65,7 +65,7 @@ export function CombatPage({
   )
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1.2fr)_minmax(0,1fr)] gap-3 overflow-hidden xl:grid-cols-[minmax(0,3fr)_minmax(18rem,1fr)] xl:grid-rows-1 xl:gap-5">
+    <div className="grid h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1.2fr)_minmax(0,1fr)] gap-3 overflow-hidden xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] xl:grid-rows-1 xl:gap-5">
       <Panel
         variant="combat"
         className={`flex h-full min-h-0 flex-col overflow-hidden ${
