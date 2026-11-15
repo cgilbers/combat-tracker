@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Panel } from './Panel'
 import { Button } from './Button'
 import { loadSrdSpellDescription } from '../data/srd'
@@ -44,29 +45,98 @@ function formatEntries(entries: Record<string, number> | undefined): string {
     .join(', ')
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 function DetailSection({
   title,
   entries,
+  srdSpells = [],
+  spellDescriptions = [],
 }: {
   title: string
   entries?: CreatureAction[]
+  srdSpells?: SrdSpellReference[]
+  spellDescriptions?: CreatureSpellDescription[]
 }) {
+  const [selectedSpell, setSelectedSpell] = useState<SpellPopupContent | null>(null)
   if (!entries?.length) return null
 
+  const spellsByName = new Map<string, SpellPopupContent>()
+  for (const spell of srdSpells) {
+    spellsByName.set(spell.name.toLowerCase(), {
+      name: spell.name,
+      srdIndex: spell.index,
+    })
+  }
+  for (const spell of spellDescriptions) {
+    spellsByName.set(spell.name.toLowerCase(), spell)
+  }
+  const spellPattern =
+    spellsByName.size > 0
+      ? new RegExp(
+          `(^|[^A-Za-z0-9])(${[...spellsByName.keys()]
+            .sort((first, second) => second.length - first.length)
+            .map(escapeRegExp)
+            .join('|')})(?=$|[^A-Za-z0-9])`,
+          'gi',
+        )
+      : undefined
+
+  function renderDescription(description: string) {
+    if (!spellPattern) return description
+
+    const parts: ReactNode[] = []
+    let lastIndex = 0
+    for (const match of description.matchAll(spellPattern)) {
+      const start = match.index ?? 0
+      const nameStart = start + match[1].length
+      const spellName = match[2]
+      const spell = spellsByName.get(spellName.toLowerCase())
+      if (!spell) continue
+
+      parts.push(description.slice(lastIndex, nameStart))
+      parts.push(
+        <button
+          key={`${nameStart}-${spellName}`}
+          type="button"
+          className="text-accent underline decoration-accent/50 underline-offset-2 hover:text-ink"
+          onClick={() => setSelectedSpell(spell)}
+        >
+          {spellName}
+        </button>,
+      )
+      lastIndex = start + match[0].length
+    }
+    parts.push(description.slice(lastIndex))
+    return parts
+  }
+
   return (
-    <section>
-      <h3 className="mb-2 font-mono text-[10px] tracking-[1px] text-accent">
-        {title}
-      </h3>
-      <ul className="space-y-3">
-        {entries.map((entry, index) => (
-          <li key={`${entry.name}-${index}`} className="text-sm">
-            <strong className="text-ink">{entry.name}.</strong>{' '}
-            <span className="whitespace-pre-line text-muted">{entry.description}</span>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <>
+      <section>
+        <h3 className="mb-2 font-mono text-[10px] tracking-[1px] text-accent">
+          {title}
+        </h3>
+        <ul className="space-y-3">
+          {entries.map((entry, index) => (
+            <li key={`${entry.name}-${index}`} className="text-sm">
+              <strong className="text-ink">{entry.name}.</strong>{' '}
+              <span className="whitespace-pre-line text-muted">
+                {renderDescription(entry.description)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+      {selectedSpell && (
+        <SpellDescriptionPopup
+          spell={selectedSpell}
+          onClose={() => setSelectedSpell(null)}
+        />
+      )}
+    </>
   )
 }
 
@@ -281,73 +351,6 @@ function SpellDescriptionPopup({
   )
 }
 
-function SpellList({
-  srdSpells,
-  spellDescriptions,
-}: {
-  srdSpells: SrdSpellReference[]
-  spellDescriptions: CreatureSpellDescription[]
-}) {
-  const [selectedSpell, setSelectedSpell] = useState<SpellPopupContent | null>(null)
-  const spellsByLevel = new Map<number, SrdSpellReference[]>()
-  for (const spell of srdSpells) {
-    spellsByLevel.set(spell.level, [...(spellsByLevel.get(spell.level) ?? []), spell])
-  }
-
-  return (
-    <div className="mt-3 space-y-3">
-      {[...spellsByLevel.entries()]
-        .sort(([first], [second]) => first - second)
-        .map(([level, spells]) => (
-          <div key={level}>
-            <h4 className="mb-1 text-xs text-muted">
-              {level === 0 ? 'Cantrips' : `Level ${level}`}
-            </h4>
-            <ul className="flex flex-wrap gap-x-3 gap-y-1">
-              {spells.map((spell) => (
-                <li key={spell.index}>
-                  <button
-                    type="button"
-                    className="text-left text-sm text-accent underline decoration-accent/50 underline-offset-2 hover:text-ink"
-                    onClick={() =>
-                      setSelectedSpell({ name: spell.name, srdIndex: spell.index })
-                    }
-                  >
-                    {spell.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      {spellDescriptions.length > 0 && (
-        <div>
-          <h4 className="mb-1 text-xs text-muted">Custom spells</h4>
-          <ul className="flex flex-wrap gap-x-3 gap-y-1">
-            {spellDescriptions.map((spell, index) => (
-              <li key={`${spell.name}-${index}`}>
-                <button
-                  type="button"
-                  className="text-left text-sm text-accent underline decoration-accent/50 underline-offset-2 hover:text-ink"
-                  onClick={() => setSelectedSpell(spell)}
-                >
-                  {spell.name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {selectedSpell && (
-        <SpellDescriptionPopup
-          spell={selectedSpell}
-          onClose={() => setSelectedSpell(null)}
-        />
-      )}
-    </div>
-  )
-}
-
 export function CreatureDetailsPanel({
   creature,
   combatant,
@@ -393,6 +396,21 @@ export function CreatureDetailsPanel({
             : Math.floor((abilityScores[key] - 10) / 2),
       }))
     : []
+  const traits = creature.traits ?? []
+  const hasSpellcastingTrait = traits.some(
+    (trait) => trait.name.toLowerCase() === 'spellcasting',
+  )
+  const spellcastingDescription = creature.spellcasting?.trim()
+  const displayedTraits =
+    spellcastingDescription && !hasSpellcastingTrait
+      ? [
+          ...traits,
+          {
+            name: 'Spellcasting',
+            description: spellcastingDescription.replace(/^Spellcasting:\s*/i, ''),
+          },
+        ]
+      : traits
 
   return (
     <Panel
@@ -475,25 +493,6 @@ export function CreatureDetailsPanel({
           ))}
       </dl>
 
-      {(creature.spellcasting ||
-        creature.srdSpells?.length ||
-        creature.spellDescriptions?.length) && (
-        <section className="mt-5 border-t border-line pt-4">
-          <h3 className="mb-2 font-mono text-[10px] tracking-[1px] text-accent">
-            SPELLCASTING & SPELLS
-          </h3>
-          {creature.spellcasting && (
-            <p className="whitespace-pre-line text-sm text-muted">
-              {creature.spellcasting}
-            </p>
-          )}
-          <SpellList
-            srdSpells={creature.srdSpells ?? []}
-            spellDescriptions={creature.spellDescriptions ?? []}
-          />
-        </section>
-      )}
-
       {encounterResources && (
         <section className="mt-5 border-t border-line pt-4">
           <h3 className="mb-2 font-mono text-[10px] tracking-[1px] text-accent">
@@ -539,7 +538,12 @@ export function CreatureDetailsPanel({
       )}
 
       <div className="mt-5 space-y-5 border-t border-line pt-4">
-        <DetailSection title="TRAITS" entries={creature.traits} />
+        <DetailSection
+          title="TRAITS"
+          entries={displayedTraits}
+          srdSpells={creature.srdSpells}
+          spellDescriptions={creature.spellDescriptions}
+        />
         <DetailSection title="ACTIONS" entries={creature.actions} />
         <DetailSection title="REACTIONS" entries={creature.reactions} />
         <DetailSection
