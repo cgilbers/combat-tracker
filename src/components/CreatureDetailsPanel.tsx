@@ -287,15 +287,6 @@ export function CreatureDetailsPanel({
                 onAdjust={adjustResource}
               />
             )}
-            {encounterResources.lairActions && (
-              <ResourceCounter
-                label="Lair action"
-                resource={encounterResources.lairActions}
-                kind="lairActions"
-                canAdjust={canAdjustBossResources}
-                onAdjust={adjustResource}
-              />
-            )}
           </ul>
         </section>
       )}

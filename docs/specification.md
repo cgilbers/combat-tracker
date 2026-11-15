@@ -407,7 +407,6 @@ type BossResourceState = {
   spellSlots?: Record<number, LimitedUseResourceState>;
   legendaryActions?: LimitedUseResourceState;
   legendaryResistances?: LimitedUseResourceState;
-  lairActions?: LimitedUseResourceState;
 };
 
 type Creature = {
@@ -613,8 +612,8 @@ type EncounterEnvironment = {
 
 ### 7.5 Boss Resources
 - Copy creature resource definitions into independent combat state for each creature.
-- Let the DM spend and restore spell slots, legendary actions, legendary resistances, and one lair action when defined.
-- Reset legendary actions and lair actions when the round wraps. Spell slots and legendary resistances persist until restored.
+- Let the DM spend and restore spell slots, legendary actions, and legendary resistances when defined.
+- Reset legendary actions when the round wraps. Spell slots and legendary resistances persist until restored.
 - Show one non-turn lair action reminder at initiative count 20, after combatants tied at 20.
 
 ---

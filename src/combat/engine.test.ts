@@ -173,7 +173,6 @@ describe('combat engine', () => {
 
     expect(resumedBoss?.bossResourcesState).toEqual({
       legendaryActions: { max: 2, used: 0 },
-      lairActions: { max: 1, used: 0 },
     })
   })
 
@@ -246,15 +245,14 @@ describe('combat engine', () => {
         spellSlots: { 1: { max: 2, used: 0 }, 3: { max: 1, used: 0 } },
         legendaryActions: { max: 3, used: 0 },
         legendaryResistances: { max: 2, used: 0 },
-        lairActions: { max: 1, used: 0 },
       },
       {
         spellSlots: { 1: { max: 2, used: 0 }, 3: { max: 1, used: 0 } },
         legendaryActions: { max: 3, used: 0 },
         legendaryResistances: { max: 2, used: 0 },
-        lairActions: { max: 1, used: 0 },
       },
     ])
+    expect(bosses[0].bossResourcesState).not.toHaveProperty('lairActions')
     expect(spent.combatants.find((combatant) => combatant.id === bosses[0].id)
       ?.bossResourcesState?.spellSlots?.[1].used).toBe(1)
     expect(spent.combatants.find((combatant) => combatant.id === bosses[1].id)
@@ -289,7 +287,6 @@ describe('combat engine', () => {
         ['spellSlots', 1],
         ['legendaryActions', undefined],
         ['legendaryResistances', undefined],
-        ['lairActions', undefined],
       ] as const).reduce(
         (updated, [resource, level]) =>
           adjustBossResource(updated, bossCombatant.id, resource, 'spend', level),
@@ -301,7 +298,6 @@ describe('combat engine', () => {
       ['spellSlots', 1],
       ['legendaryActions', undefined],
       ['legendaryResistances', undefined],
-      ['lairActions', undefined],
     ] as const).reduce(
       (updated, [resource, level]) =>
         adjustBossResource(updated, bossCombatant.id, resource, 'restore', level),
@@ -311,7 +307,6 @@ describe('combat engine', () => {
       ['spellSlots', 1],
       ['legendaryActions', undefined],
       ['legendaryResistances', undefined],
-      ['lairActions', undefined],
     ] as const).reduce(
       (updated, [resource, level]) =>
         adjustBossResource(updated, bossCombatant.id, resource, 'restore', level),
@@ -326,13 +321,11 @@ describe('combat engine', () => {
       spellSlots: { 1: { used: 1 } },
       legendaryActions: { used: 1 },
       legendaryResistances: { used: 1 },
-      lairActions: { used: 1 },
     })
     expect(state).toMatchObject({
       spellSlots: { 1: { used: 0 } },
       legendaryActions: { used: 0 },
       legendaryResistances: { used: 0 },
-      lairActions: { used: 0 },
     })
   })
 
@@ -362,7 +355,6 @@ describe('combat engine', () => {
       ['spellSlots', 1],
       ['legendaryActions', undefined],
       ['legendaryResistances', undefined],
-      ['lairActions', undefined],
     ] as const).reduce(
       (updated, [resource, level]) =>
         adjustBossResource(updated, bossCombatant.id, resource, 'spend', level),
@@ -381,13 +373,11 @@ describe('combat engine', () => {
     expect(next.round).toBe(1)
     expect(stateBeforeWrap).toMatchObject({
       legendaryActions: { used: 1 },
-      lairActions: { used: 1 },
     })
     expect(state).toMatchObject({
       spellSlots: { 1: { used: 1 } },
       legendaryActions: { used: 0 },
       legendaryResistances: { used: 1 },
-      lairActions: { used: 0 },
     })
   })
 
@@ -420,7 +410,6 @@ describe('combat engine', () => {
       ['spellSlots', 1],
       ['legendaryActions', undefined],
       ['legendaryResistances', undefined],
-      ['lairActions', undefined],
     ] as const).reduce(
       (updated, [resource, level]) =>
         adjustBossResource(updated, bossCombatant.id, resource, 'spend', level),
@@ -434,7 +423,6 @@ describe('combat engine', () => {
       spellSlots: { 1: { used: 1 } },
       legendaryActions: { used: 0 },
       legendaryResistances: { used: 1 },
-      lairActions: { used: 0 },
     })
   })
 

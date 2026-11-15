@@ -12,7 +12,6 @@ export type BossResourceKind =
   | 'spellSlots'
   | 'legendaryActions'
   | 'legendaryResistances'
-  | 'lairActions'
 export type ResourceAdjustment = 'spend' | 'restore'
 
 export function createDraftEncounter(id: string, name: string): Encounter {
@@ -518,9 +517,7 @@ export function adjustBossResource(
     const updatedState: BossResourceState =
       resource === 'legendaryActions'
         ? { ...state, legendaryActions: updated }
-        : resource === 'legendaryResistances'
-          ? { ...state, legendaryResistances: updated }
-          : { ...state, lairActions: updated }
+        : { ...state, legendaryResistances: updated }
     return { ...candidate, bossResourcesState: updatedState }
   }
 
@@ -547,7 +544,7 @@ function createBossResourceState(
   creature: Creature,
 ): BossResourceState | undefined {
   const definition = creature.bossResources
-  if (!definition && !creature.lairActions?.length) return undefined
+  if (!definition) return undefined
 
   const spellSlots = Object.fromEntries(
     Object.entries(definition?.spellSlots ?? {}).map(([level, max]) => [
@@ -562,9 +559,6 @@ function createBossResourceState(
       : {}),
     ...(definition?.legendaryResistances !== undefined
       ? { legendaryResistances: { max: definition.legendaryResistances, used: 0 } }
-      : {}),
-    ...(definition?.hasLairActions || creature.lairActions?.length
-      ? { lairActions: { max: 1, used: 0 } }
       : {}),
   }
 
@@ -609,9 +603,6 @@ function resetRoundScopedResources(
         ...state,
         ...(state.legendaryActions
           ? { legendaryActions: { ...state.legendaryActions, used: 0 } }
-          : {}),
-        ...(state.lairActions
-          ? { lairActions: { ...state.lairActions, used: 0 } }
           : {}),
       },
     }

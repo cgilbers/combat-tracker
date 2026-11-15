@@ -71,7 +71,6 @@ export type BossResourceState = {
   spellSlots?: Record<number, LimitedUseResourceState>
   legendaryActions?: LimitedUseResourceState
   legendaryResistances?: LimitedUseResourceState
-  lairActions?: LimitedUseResourceState
 }
 
 export type CombatantState = {
