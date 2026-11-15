@@ -37,6 +37,8 @@ export type Creature = {
   legendaryActions?: CreatureAction[]
   lairActions?: CreatureAction[]
   spellcasting?: string
+  spellDescriptions?: CreatureSpellDescription[]
+  srdSpells?: SrdSpellReference[]
   bossResources?: BossResourceDefinition
   tags?: string[]
 }
@@ -53,6 +55,17 @@ export type AbilityScores = {
 export type CreatureAction = {
   name: string
   description: string
+}
+
+export type CreatureSpellDescription = {
+  name: string
+  description: string
+}
+
+export type SrdSpellReference = {
+  index: string
+  name: string
+  level: number
 }
 
 export type BossResourceDefinition = {

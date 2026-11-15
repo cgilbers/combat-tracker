@@ -1,12 +1,16 @@
+import { useEffect, useRef, useState } from 'react'
 import { Panel } from './Panel'
 import { Button } from './Button'
+import { loadSrdSpellDescription } from '../data/srd'
 import type { BossResourceKind, ResourceAdjustment } from '../combat/engine'
 import type {
   AbilityScores,
   CombatantState,
   Creature,
   CreatureAction,
+  CreatureSpellDescription,
   LimitedUseResourceState,
+  SrdSpellReference,
 } from '../domain/types'
 
 type CreatureDetailsPanelProps = {
@@ -174,6 +178,177 @@ function SpellSlotTracker({
   )
 }
 
+type SpellPopupContent = {
+  name: string
+  description?: string
+  srdIndex?: string
+}
+
+function SpellDescriptionPopup({
+  spell,
+  onClose,
+}: {
+  spell: SpellPopupContent
+  onClose: () => void
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const [description, setDescription] = useState(spell.description ?? '')
+  const [isLoading, setIsLoading] = useState(Boolean(spell.srdIndex && !spell.description))
+  const [loadError, setLoadError] = useState('')
+  const [retryCount, setRetryCount] = useState(0)
+  const error =
+    spell.description || spell.srdIndex
+      ? loadError
+      : 'A spell description is not available.'
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+    dialog.showModal()
+    return () => {
+      if (dialog.open) dialog.close()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (spell.description) return
+    if (!spell.srdIndex) return
+
+    let isCancelled = false
+    loadSrdSpellDescription(spell.srdIndex)
+      .then((result) => {
+        if (!isCancelled) setDescription(result.description)
+      })
+      .catch((loadError: unknown) => {
+        if (!isCancelled) {
+          setLoadError(
+            loadError instanceof Error
+              ? loadError.message
+              : 'The spell description could not be loaded.',
+          )
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) setIsLoading(false)
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [spell.description, spell.srdIndex, retryCount])
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="spell-description-title"
+      className="m-auto max-h-[85dvh] w-[min(90vw,40rem)] max-w-none overflow-y-auto border border-line bg-panel p-0 text-ink shadow-2xl backdrop:bg-black/70"
+      onClose={onClose}
+      onCancel={onClose}
+    >
+      <div className="flex items-start justify-between gap-4 border-b border-line p-4">
+        <h3
+          id="spell-description-title"
+          className="font-display text-xl text-ink"
+        >
+          {spell.name}
+        </h3>
+        <Button onClick={() => dialogRef.current?.close()}>Close</Button>
+      </div>
+      <div className="p-4">
+        {isLoading && <p role="status" className="text-sm text-muted">Loading spell description…</p>}
+        {error && (
+          <div role="alert" className="space-y-3">
+            <p className="text-sm text-danger">{error}</p>
+            {spell.srdIndex && (
+              <Button
+                onClick={() => {
+                  setLoadError('')
+                  setIsLoading(true)
+                  setRetryCount((count) => count + 1)
+                }}
+              >
+                Retry
+              </Button>
+            )}
+          </div>
+        )}
+        {description && (
+          <p className="whitespace-pre-line text-sm leading-relaxed text-muted">
+            {description}
+          </p>
+        )}
+      </div>
+    </dialog>
+  )
+}
+
+function SpellList({
+  srdSpells,
+  spellDescriptions,
+}: {
+  srdSpells: SrdSpellReference[]
+  spellDescriptions: CreatureSpellDescription[]
+}) {
+  const [selectedSpell, setSelectedSpell] = useState<SpellPopupContent | null>(null)
+  const spellsByLevel = new Map<number, SrdSpellReference[]>()
+  for (const spell of srdSpells) {
+    spellsByLevel.set(spell.level, [...(spellsByLevel.get(spell.level) ?? []), spell])
+  }
+
+  return (
+    <div className="mt-3 space-y-3">
+      {[...spellsByLevel.entries()]
+        .sort(([first], [second]) => first - second)
+        .map(([level, spells]) => (
+          <div key={level}>
+            <h4 className="mb-1 text-xs text-muted">
+              {level === 0 ? 'Cantrips' : `Level ${level}`}
+            </h4>
+            <ul className="flex flex-wrap gap-x-3 gap-y-1">
+              {spells.map((spell) => (
+                <li key={spell.index}>
+                  <button
+                    type="button"
+                    className="text-left text-sm text-accent underline decoration-accent/50 underline-offset-2 hover:text-ink"
+                    onClick={() =>
+                      setSelectedSpell({ name: spell.name, srdIndex: spell.index })
+                    }
+                  >
+                    {spell.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      {spellDescriptions.length > 0 && (
+        <div>
+          <h4 className="mb-1 text-xs text-muted">Custom spells</h4>
+          <ul className="flex flex-wrap gap-x-3 gap-y-1">
+            {spellDescriptions.map((spell, index) => (
+              <li key={`${spell.name}-${index}`}>
+                <button
+                  type="button"
+                  className="text-left text-sm text-accent underline decoration-accent/50 underline-offset-2 hover:text-ink"
+                  onClick={() => setSelectedSpell(spell)}
+                >
+                  {spell.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {selectedSpell && (
+        <SpellDescriptionPopup
+          spell={selectedSpell}
+          onClose={() => setSelectedSpell(null)}
+        />
+      )}
+    </div>
+  )
+}
+
 export function CreatureDetailsPanel({
   creature,
   combatant,
@@ -301,14 +476,22 @@ export function CreatureDetailsPanel({
           ))}
       </dl>
 
-      {creature.spellcasting && (
+      {(creature.spellcasting ||
+        creature.srdSpells?.length ||
+        creature.spellDescriptions?.length) && (
         <section className="mt-5 border-t border-line pt-4">
           <h3 className="mb-2 font-mono text-[10px] tracking-[1px] text-accent">
             SPELLCASTING & SPELLS
           </h3>
-          <p className="whitespace-pre-line text-sm text-muted">
-            {creature.spellcasting}
-          </p>
+          {creature.spellcasting && (
+            <p className="whitespace-pre-line text-sm text-muted">
+              {creature.spellcasting}
+            </p>
+          )}
+          <SpellList
+            srdSpells={creature.srdSpells ?? []}
+            spellDescriptions={creature.spellDescriptions ?? []}
+          />
         </section>
       )}
 

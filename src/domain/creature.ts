@@ -77,6 +77,7 @@ export function validateCreature(creature: Creature): string[] {
     ...validateActions(creature.reactions, 'Reactions'),
     ...validateActions(creature.legendaryActions, 'Legendary actions'),
     ...validateActions(creature.lairActions, 'Lair actions'),
+    ...validateActions(creature.spellDescriptions, 'Spell descriptions'),
   )
 
   const resources = creature.bossResources

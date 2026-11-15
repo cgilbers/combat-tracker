@@ -124,6 +124,18 @@ export function CreatureFormFields({
           Spellcasting
           <TextArea aria-label="Creature spellcasting" value={form.spellcasting} onChange={(event) => onUpdateField('spellcasting', event.target.value)} />
         </FieldLabel>
+        <FieldLabel className="col-span-full">
+          Spell descriptions
+          <TextArea
+            aria-label="Creature spell descriptions"
+            placeholder="Shield: A shimmering magical barrier appears around you."
+            value={form.spellDescriptions}
+            onChange={(event) => onUpdateField('spellDescriptions', event.target.value)}
+          />
+          <span className="text-xs text-muted">
+            Add one spell per line as Name: Description.
+          </span>
+        </FieldLabel>
       </div>
       <fieldset className="my-5 border border-line p-4">
         <legend className="px-2 font-mono text-[10px] tracking-[.5px] text-accent">Boss resource limits</legend>
