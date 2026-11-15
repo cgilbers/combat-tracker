@@ -3,7 +3,10 @@ import { Button } from '../components/Button'
 import { CreatureDetailsPanel } from '../components/CreatureDetailsPanel'
 import { Panel } from '../components/Panel'
 import type { Encounter } from '../domain/types'
+import type { BossResourceKind, ResourceAdjustment } from '../combat/engine'
+import { buildInitiativeOrder } from '../combat/initiativeOrder'
 import { InitiativeRow } from './combat/InitiativeRow'
+import { CountBadge } from '../components/CountBadge'
 
 type CombatPageProps = {
   encounter: Encounter | null
@@ -17,6 +20,12 @@ type CombatPageProps = {
     direction: 'damage' | 'heal',
     amount: string,
   ) => void
+  onAdjustBossResource: (
+    combatantId: string,
+    resource: BossResourceKind,
+    direction: ResourceAdjustment,
+    spellSlotLevel?: number,
+  ) => void
 }
 
 export function CombatPage({
@@ -27,24 +36,36 @@ export function CombatPage({
   onDelayTurn,
   onResumeTurn,
   onAdjustCreatureHp,
+  onAdjustBossResource,
 }: CombatPageProps) {
   const [selectedCombatantId, setSelectedCombatantId] = useState('')
   const currentCombatant =
     encounter?.combatants[encounter.currentTurnIndex]
-  const creatureCombatants =
-    encounter?.combatants.filter((combatant) => combatant.type === 'creature') ?? []
+  const creatureCombatants = [
+    ...(encounter?.combatants.filter((combatant) => combatant.type === 'creature') ?? []),
+    ...(encounter?.delayedCombatants?.filter(
+      (combatant) => combatant.type === 'creature',
+    ) ?? []),
+  ]
   const selectedCombatant =
     creatureCombatants.find((combatant) => combatant.id === selectedCombatantId) ??
-    creatureCombatants.find(
-      (combatant) => combatant.id === encounter?.combatants[encounter.currentTurnIndex]?.id,
-    ) ??
+    creatureCombatants.find((combatant) => combatant.id === currentCombatant?.id) ??
     creatureCombatants[0]
   const selectedCreature = selectedCombatant
     ? encounter?.creatureSnapshots[selectedCombatant.refId]
     : undefined
+  const hasLairActions = Object.values(encounter?.creatureSnapshots ?? {}).some(
+    (creature) =>
+      (creature.lairActions?.length ?? 0) > 0 ||
+      creature.bossResources?.hasLairActions,
+  )
+  const initiativeOrder = buildInitiativeOrder(
+    encounter?.combatants ?? [],
+    hasLairActions,
+  )
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1.2fr)_minmax(0,1fr)] gap-3 overflow-hidden xl:grid-cols-[minmax(0,3fr)_minmax(18rem,1fr)] xl:grid-rows-1 xl:gap-5">
+    <div className="grid h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1.2fr)_minmax(0,1fr)] gap-3 overflow-hidden xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] xl:grid-rows-1 xl:gap-5">
       <Panel
         variant="combat"
         className={`flex h-full min-h-0 flex-col overflow-hidden ${
@@ -119,17 +140,38 @@ export function CombatPage({
                   No active combatants. Resume a delayed turn to continue.
                 </p>
               )}
-              {encounter.combatants.map((combatant, index) => (
-                <InitiativeRow
-                  key={combatant.id}
-                  combatant={combatant}
-                  isCurrentTurn={index === encounter.currentTurnIndex}
-                  isSelected={selectedCombatant?.id === combatant.id}
-                  canAdjustHp={encounter.status === 'active'}
-                  onSelect={() => setSelectedCombatantId(combatant.id)}
-                  onAdjustCreatureHp={onAdjustCreatureHp}
-                />
-              ))}
+              {initiativeOrder.map((item) =>
+                item.kind === 'lair-action' ? (
+                  <div
+                    key="lair-action-reminder"
+                    className="flex items-center gap-3 border border-accent/50 bg-accent-soft p-3 sm:p-4"
+                  >
+                    <CountBadge className="text-center">20</CountBadge>
+                    <span
+                      aria-label="Lair action reminder"
+                      className="grid size-8 shrink-0 place-items-center border border-accent font-mono text-[11px] text-accent"
+                    >
+                      L
+                    </span>
+                    <div className="min-w-0">
+                      <strong className="block text-sm text-ink">Lair Action</strong>
+                      <small className="text-xs text-muted">
+                        Reminder · at initiative count 20, after ties
+                      </small>
+                    </div>
+                  </div>
+                ) : (
+                  <InitiativeRow
+                    key={item.combatant.id}
+                    combatant={item.combatant}
+                    isCurrentTurn={item.index === encounter.currentTurnIndex}
+                    isSelected={selectedCombatant?.id === item.combatant.id}
+                    canAdjustHp={encounter.status === 'active'}
+                    onSelect={() => setSelectedCombatantId(item.combatant.id)}
+                    onAdjustCreatureHp={onAdjustCreatureHp}
+                  />
+                ),
+              )}
               {encounter.status === 'active' &&
                 encounter.delayedCombatants?.map((combatant) => {
                   return (
@@ -138,9 +180,27 @@ export function CombatPage({
                       className="flex flex-wrap items-center gap-3 border border-accent/40 bg-raised p-3"
                     >
                       <div className="min-w-0 flex-1">
-                        <strong className="block truncate text-sm text-ink">
-                          {combatant.name}
-                        </strong>
+                        {combatant.type === 'creature' ? (
+                          <button
+                            type="button"
+                            aria-pressed={selectedCombatant?.id === combatant.id}
+                            className="block min-w-0 text-left"
+                            onClick={() => setSelectedCombatantId(combatant.id)}
+                          >
+                            <strong className="block truncate text-sm text-ink">
+                              {combatant.name}
+                            </strong>
+                            <small className="text-xs text-muted">
+                              {selectedCombatant?.id === combatant.id
+                                ? 'Selected creature'
+                                : 'Creature · view details'}
+                            </small>
+                          </button>
+                        ) : (
+                          <strong className="block truncate text-sm text-ink">
+                            {combatant.name}
+                          </strong>
+                        )}
                         <small className="text-xs text-muted">Delayed</small>
                       </div>
                       <Button
@@ -160,6 +220,8 @@ export function CombatPage({
         <CreatureDetailsPanel
           creature={selectedCreature}
           combatant={selectedCombatant}
+          canAdjustBossResources={encounter.status === 'active'}
+          onAdjustBossResource={onAdjustBossResource}
         />
       )}
     </div>

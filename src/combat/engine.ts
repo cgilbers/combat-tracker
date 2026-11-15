@@ -1,10 +1,18 @@
 import type {
+  BossResourceState,
   CombatantState,
   Creature,
   Encounter,
   EncounterCreatureGroup,
+  LimitedUseResourceState,
   Party,
 } from '../domain/types'
+
+export type BossResourceKind =
+  | 'spellSlots'
+  | 'legendaryActions'
+  | 'legendaryResistances'
+export type ResourceAdjustment = 'spend' | 'restore'
 
 export function createDraftEncounter(id: string, name: string): Encounter {
   return {
@@ -189,19 +197,23 @@ export function startEncounter(
     const groupNumber = siblingGroups.findIndex((candidate) => candidate.id === group.id) + 1
     const useGroupNumber = siblingGroups.length > 1
 
-    return Array.from({ length: group.quantity }, (_, index) => ({
-      id: createId(),
-      type: 'creature' as const,
-      refId: group.creatureId,
-      groupId: group.id,
-      name: `${creature.name}${useGroupNumber ? ` (Group ${groupNumber})` : ''}${
-        group.quantity > 1 ? ` ${index + 1}` : ''
-      }`,
-      initiative: group.initiative,
-      currentHp: creature.hpAverage,
-      maxHp: creature.hpAverage,
-      ac: creature.ac,
-    }))
+    return Array.from({ length: group.quantity }, (_, index) => {
+      const bossResourcesState = createBossResourceState(creature)
+      return {
+        id: createId(),
+        type: 'creature' as const,
+        refId: group.creatureId,
+        groupId: group.id,
+        name: `${creature.name}${useGroupNumber ? ` (Group ${groupNumber})` : ''}${
+          group.quantity > 1 ? ` ${index + 1}` : ''
+        }`,
+        initiative: group.initiative,
+        currentHp: creature.hpAverage,
+        maxHp: creature.hpAverage,
+        ac: creature.ac,
+        ...(bossResourcesState ? { bossResourcesState } : {}),
+      }
+    })
   })
   const sortedCombatants = sortCombatants([
     ...creatureCombatants,
@@ -232,7 +244,16 @@ export function activateEncounter(encounters: Encounter[], encounterId: string):
   }
   return encounters.map((encounter) =>
     encounter.id === encounterId
-      ? { ...encounter, status: 'active' }
+      ? {
+          ...encounter,
+          status: 'active',
+          combatants: encounter.combatants.map((combatant) =>
+            initializeCombatantBossResources(combatant, encounter.creatureSnapshots),
+          ),
+          delayedCombatants: encounter.delayedCombatants?.map((combatant) =>
+            initializeCombatantBossResources(combatant, encounter.creatureSnapshots),
+          ),
+        }
       : encounter.status === 'active'
         ? { ...encounter, status: 'paused' }
         : encounter,
@@ -307,7 +328,7 @@ export function delayCombatant(encounter: Encounter, combatantId: string): Encou
       ? 0
       : findNextReadyIndex(activeCombatants, Math.min(index - 1, activeCombatants.length - 1))
 
-  return {
+  const updatedEncounter: Encounter = {
     ...encounter,
     combatants: wrapped
       ? activeCombatants.map((candidate) => ({
@@ -325,6 +346,10 @@ export function delayCombatant(encounter: Encounter, combatantId: string): Encou
     currentTurnIndex: Math.max(nextIndex, 0),
     round: encounter.round + (wrapped ? 1 : 0),
   }
+  return resetLegendaryActionsAtTurnStart(
+    updatedEncounter,
+    updatedEncounter.currentTurnIndex,
+  )
 }
 
 export const delayTurn = delayCombatant
@@ -381,12 +406,15 @@ export function resumeCombatant(
     ? insertIndex
     : encounter.currentTurnIndex + (insertIndex <= encounter.currentTurnIndex ? 1 : 0)
 
-  return {
+  const updatedEncounter = {
     ...encounter,
     combatants: updatedCombatants,
     delayedCombatants: delayedCombatants.filter((combatant) => combatant.id !== combatantId),
     currentTurnIndex: nextCurrentTurnIndex,
   }
+  return resumeNow
+    ? resetLegendaryActionsAtTurnStart(updatedEncounter, insertIndex)
+    : updatedEncounter
 }
 
 export const resumeTurn = resumeCombatant
@@ -403,10 +431,13 @@ export function nextTurn(encounter: Encounter): Encounter {
   const wrapped = nextReadyIndex <= encounter.currentTurnIndex
 
   if (!wrapped) {
-    return { ...encounter, currentTurnIndex: nextReadyIndex }
+    return resetLegendaryActionsAtTurnStart(
+      { ...encounter, currentTurnIndex: nextReadyIndex },
+      nextReadyIndex,
+    )
   }
 
-  return {
+  const updatedEncounter = {
     ...encounter,
     combatants: encounter.combatants.map((combatant) => ({
       ...combatant,
@@ -420,6 +451,7 @@ export function nextTurn(encounter: Encounter): Encounter {
     currentTurnIndex: nextReadyIndex,
     round: encounter.round + 1,
   }
+  return resetLegendaryActionsAtTurnStart(updatedEncounter, nextReadyIndex)
 }
 
 export function updateCreatureHp(
@@ -444,6 +476,68 @@ export function updateCreatureHp(
   }
 }
 
+export function adjustBossResource(
+  encounter: Encounter,
+  combatantId: string,
+  resource: BossResourceKind,
+  direction: ResourceAdjustment,
+  spellSlotLevel?: number,
+): Encounter {
+  if (encounter.status !== 'active') return encounter
+
+  const combatant = [
+    ...encounter.combatants,
+    ...(encounter.delayedCombatants ?? []),
+  ].find((candidate) => candidate.id === combatantId)
+  if (!combatant) throw new Error(`Combatant ${combatantId} was not found.`)
+  if (combatant.type !== 'creature') {
+    throw new Error('Boss resources can only be adjusted for creatures.')
+  }
+  if (!combatant.bossResourcesState) {
+    throw new Error(`${combatant.name} has no tracked boss resources.`)
+  }
+
+  const updateCombatant = (candidate: CombatantState): CombatantState => {
+    if (candidate.id !== combatantId) return candidate
+
+    const state = candidate.bossResourcesState
+    if (!state) throw new Error(`${candidate.name} has no tracked boss resources.`)
+
+    if (resource === 'spellSlots') {
+      if (spellSlotLevel === undefined || !Number.isInteger(spellSlotLevel)) {
+        throw new Error('A valid spell slot level is required.')
+      }
+      const current = state.spellSlots?.[spellSlotLevel]
+      if (!current) throw new Error(`Spell slot level ${spellSlotLevel} is not defined.`)
+      return {
+        ...candidate,
+        bossResourcesState: {
+          ...state,
+          spellSlots: {
+            ...state.spellSlots,
+            [spellSlotLevel]: adjustResourceCount(current, direction),
+          },
+        },
+      }
+    }
+
+    const current = state[resource]
+    if (!current) throw new Error(`${resource} is not defined for ${candidate.name}.`)
+    const updated = adjustResourceCount(current, direction)
+    const updatedState: BossResourceState =
+      resource === 'legendaryActions'
+        ? { ...state, legendaryActions: updated }
+        : { ...state, legendaryResistances: updated }
+    return { ...candidate, bossResourcesState: updatedState }
+  }
+
+  return {
+    ...encounter,
+    combatants: encounter.combatants.map(updateCombatant),
+    delayedCombatants: encounter.delayedCombatants?.map(updateCombatant),
+  }
+}
+
 function findNextReadyIndex(
   combatants: CombatantState[],
   currentIndex: number,
@@ -454,4 +548,79 @@ function findNextReadyIndex(
   }
 
   return currentIndex
+}
+
+function createBossResourceState(
+  creature: Creature,
+): BossResourceState | undefined {
+  const definition = creature.bossResources
+  if (!definition) return undefined
+
+  const spellSlots = Object.fromEntries(
+    Object.entries(definition?.spellSlots ?? {}).map(([level, max]) => [
+      Number(level),
+      { max, used: 0 },
+    ]),
+  )
+  const state: BossResourceState = {
+    ...(Object.keys(spellSlots).length > 0 ? { spellSlots } : {}),
+    ...(definition?.legendaryActions !== undefined
+      ? { legendaryActions: { max: definition.legendaryActions, used: 0 } }
+      : {}),
+    ...(definition?.legendaryResistances !== undefined
+      ? { legendaryResistances: { max: definition.legendaryResistances, used: 0 } }
+      : {}),
+  }
+
+  return Object.keys(state).length > 0 ? state : undefined
+}
+
+function initializeCombatantBossResources(
+  combatant: CombatantState,
+  creatureSnapshots: Record<string, Creature>,
+): CombatantState {
+  if (combatant.type !== 'creature' || combatant.bossResourcesState) {
+    return combatant
+  }
+  const creature = creatureSnapshots[combatant.refId]
+  const state = creature ? createBossResourceState(creature) : undefined
+  return state ? { ...combatant, bossResourcesState: state } : combatant
+}
+
+function adjustResourceCount(
+  resource: LimitedUseResourceState,
+  direction: ResourceAdjustment,
+): LimitedUseResourceState {
+  return {
+    ...resource,
+    used: Math.min(
+      Math.max(resource.used + (direction === 'spend' ? 1 : -1), 0),
+      resource.max,
+    ),
+  }
+}
+
+function resetLegendaryActionsAtTurnStart(
+  encounter: Encounter,
+  combatantIndex: number,
+): Encounter {
+  const combatant = encounter.combatants[combatantIndex]
+  const state = combatant?.bossResourcesState
+  if (!state?.legendaryActions) return encounter
+
+  const updatedCombatants = [...encounter.combatants]
+  updatedCombatants[combatantIndex] = {
+    ...combatant,
+    bossResourcesState: {
+      ...state,
+      legendaryActions: {
+        ...state.legendaryActions,
+        used: 0,
+      },
+    },
+  }
+  return {
+    ...encounter,
+    combatants: updatedCombatants,
+  }
 }

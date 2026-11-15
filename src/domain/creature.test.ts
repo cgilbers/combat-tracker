@@ -58,4 +58,22 @@ describe('creature validation', () => {
       'Legendary actions must be a non-negative whole number.',
     ])
   })
+
+  it('validates manually entered spell descriptions', () => {
+    expect(
+      validateCreature({
+        ...creature,
+        spellDescriptions: [
+          { name: 'Shield', description: 'A shimmering barrier appears.' },
+        ],
+      }),
+    ).toEqual([])
+
+    expect(
+      validateCreature({
+        ...creature,
+        spellDescriptions: [{ name: 'Shield', description: '' }],
+      }),
+    ).toContain('Spell descriptions must each have a name and description.')
+  })
 })

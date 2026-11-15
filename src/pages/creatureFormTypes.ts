@@ -22,6 +22,7 @@ export type CreatureForm = {
   legendaryActions: string
   lairActions: string
   spellcasting: string
+  spellDescriptions: string
   spellSlots: string
   legendaryActionLimit: string
   legendaryResistanceLimit: string

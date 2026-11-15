@@ -4,6 +4,7 @@ import {
   DnD5eApiProvider,
   importSrdCreature,
   loadSrdCatalog,
+  loadSrdSpellDescription,
   normalizeSrdCreature,
   readCachedSrdCreatures,
   saveCachedSrdCreatures,
@@ -86,6 +87,76 @@ describe('SRD creature import', () => {
       skills: { Stealth: 6 },
       traits: [{ name: 'Nimble Escape', description: 'The goblin can take the Disengage or Hide action as a bonus action.' }],
     })
+  })
+
+  it('imports spell slots and legendary resistance limits from SRD metadata', () => {
+    const creature = normalizeSrdCreature({
+      ...sampleApiCreature,
+      index: 'lich',
+      name: 'Lich',
+      special_abilities: [
+        {
+          name: 'Legendary Resistance',
+          desc: 'If the lich fails a saving throw, it can choose to succeed instead.',
+          usage: { type: 'per day', times: 3, rest_types: [] },
+        },
+        {
+          name: 'Spellcasting',
+          desc: 'The lich has the following wizard spells prepared:\n1st level (4 slots): shield\n2nd level (3 slots): invisibility',
+          spellcasting: {
+            level: 18,
+            slots: { '1': 4, '2': 3 },
+            spells: [
+              {
+                name: 'Shield',
+                level: 1,
+                url: '/api/2014/spells/shield',
+              },
+              {
+                name: 'Mage Hand',
+                level: 0,
+                url: '/api/2014/spells/mage-hand',
+              },
+            ],
+          },
+        },
+      ],
+    })
+
+    expect(creature.bossResources).toMatchObject({
+      spellSlots: { 1: 4, 2: 3 },
+      legendaryResistances: 3,
+    })
+    expect(creature.srdSpells).toEqual([
+      { index: 'shield', name: 'Shield', level: 1 },
+      { index: 'mage-hand', name: 'Mage Hand', level: 0 },
+    ])
+  })
+
+  it('loads SRD spell descriptions and higher-level details', async () => {
+    const spell = await loadSrdSpellDescription('shield', async (index) => {
+      expect(index).toBe('shield')
+      return {
+        name: 'Shield',
+        desc: ['An invisible barrier of magical force appears.'],
+        higher_level: ['No additional effect at higher levels.'],
+      }
+    })
+
+    expect(spell).toEqual({
+      name: 'Shield',
+      description:
+        'An invisible barrier of magical force appears.\n\nAt Higher Levels. No additional effect at higher levels.',
+    })
+  })
+
+  it('rejects invalid SRD spell identifiers before fetching', async () => {
+    const fetchSpell = vi.fn()
+
+    await expect(loadSrdSpellDescription('../lich', fetchSpell)).rejects.toThrow(
+      'The SRD spell identifier is invalid.',
+    )
+    expect(fetchSpell).not.toHaveBeenCalled()
   })
 
   it('rejects incomplete stat blocks instead of creating success-shaped defaults', () => {
@@ -216,15 +287,24 @@ describe('SRD creature import', () => {
         ok: true,
         json: async () => sampleApiCreature,
       })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          name: 'Shield',
+          desc: ['An invisible barrier of magical force appears.'],
+        }),
+      })
     vi.stubGlobal('fetch', fetchMock)
     const provider = new DnD5eApiProvider()
 
     await provider.listMonsters()
     await provider.fetchMonster('goblin')
+    await provider.fetchSpell('shield')
 
     expect(fetchMock.mock.calls).toEqual([
       ['https://www.dnd5eapi.co/api/2014/monsters'],
       ['https://www.dnd5eapi.co/api/2014/monsters/goblin'],
+      ['https://www.dnd5eapi.co/api/2014/spells/shield'],
     ])
   })
 })

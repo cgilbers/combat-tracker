@@ -1,4 +1,8 @@
-import type { Creature, CreatureAction } from '../domain/types'
+import type {
+  Creature,
+  CreatureAction,
+  SrdSpellReference,
+} from '../domain/types'
 
 export const SRD_CACHE_KEY = 'combat-tracker:srd-creatures'
 export const SRD_CATALOG_CACHE_KEY = 'combat-tracker:srd-catalog'
@@ -13,6 +17,11 @@ export type SrdMonsterSummary = {
 export type SrdProvider = {
   listMonsters(): Promise<SrdMonsterSummary[]>
   fetchMonster(index: string): Promise<unknown>
+}
+
+export type SrdSpellDescription = {
+  name: string
+  description: string
 }
 
 export type SrdCatalogResult =
@@ -142,6 +151,116 @@ function parseNameValueMap(value: unknown): Record<string, number> | undefined {
   return Object.keys(entries).length ? entries : undefined
 }
 
+function readSpellSlotLimits(
+  spellcasting: unknown,
+  specialAbilities: unknown,
+): Record<number, number> | undefined {
+  const entries = [
+    ...(Array.isArray(spellcasting) ? spellcasting : []),
+    ...(Array.isArray(specialAbilities) ? specialAbilities : []),
+  ]
+
+  for (const entry of entries) {
+    if (!entry || typeof entry !== 'object') continue
+    const spellcastingRecord = (entry as Record<string, unknown>).spellcasting
+    if (!spellcastingRecord || typeof spellcastingRecord !== 'object') continue
+    const slots = (spellcastingRecord as Record<string, unknown>).slots
+    if (!slots || typeof slots !== 'object') continue
+
+    const limits = Object.fromEntries(
+      Object.entries(slots as Record<string, unknown>)
+        .map(([level, count]) => [Number(level), asNumber(count)] as const)
+        .filter(
+          (entry): entry is readonly [number, number] =>
+            Number.isInteger(entry[0]) &&
+            entry[0] >= 1 &&
+            entry[0] <= 9 &&
+            entry[1] !== undefined &&
+            Number.isInteger(entry[1]) &&
+            entry[1] >= 0,
+        ),
+    )
+    if (Object.keys(limits).length > 0) return limits
+  }
+
+  return undefined
+}
+
+function readSrdSpellReferences(
+  spellcasting: unknown,
+  specialAbilities: unknown,
+): SrdSpellReference[] | undefined {
+  const entries = [
+    ...(Array.isArray(spellcasting) ? spellcasting : []),
+    ...(Array.isArray(specialAbilities) ? specialAbilities : []),
+  ]
+  const spells = new Map<string, SrdSpellReference>()
+
+  for (const entry of entries) {
+    if (!entry || typeof entry !== 'object') continue
+    const spellcastingRecord = (entry as Record<string, unknown>).spellcasting
+    if (!spellcastingRecord || typeof spellcastingRecord !== 'object') continue
+    const spellList = (spellcastingRecord as Record<string, unknown>).spells
+    if (!Array.isArray(spellList)) continue
+
+    for (const value of spellList) {
+      if (!value || typeof value !== 'object') continue
+      const spell = value as Record<string, unknown>
+      const name = typeof spell.name === 'string' ? spell.name.trim() : ''
+      const level = asNumber(spell.level)
+      const url = typeof spell.url === 'string' ? spell.url : ''
+      const index =
+        typeof spell.index === 'string'
+          ? spell.index
+          : url.match(/\/spells\/([a-z0-9-]+)\/?$/i)?.[1]
+      if (
+        !name ||
+        !index ||
+        !/^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(index) ||
+        level === undefined ||
+        !Number.isInteger(level) ||
+        level < 0 ||
+        level > 9
+      ) {
+        continue
+      }
+      spells.set(index, { index, name, level })
+    }
+  }
+
+  return spells.size > 0 ? [...spells.values()] : undefined
+}
+
+function readLegendaryResistanceLimit(specialAbilities: unknown): number | undefined {
+  if (!Array.isArray(specialAbilities)) return undefined
+
+  const resistance = specialAbilities.find((ability) => {
+    if (!ability || typeof ability !== 'object') return false
+    const name = (ability as Record<string, unknown>).name
+    return typeof name === 'string' && /^legendary resistance\b/i.test(name)
+  })
+  if (!resistance || typeof resistance !== 'object') return undefined
+
+  const record = resistance as Record<string, unknown>
+  const usage =
+    record.usage && typeof record.usage === 'object'
+      ? (record.usage as Record<string, unknown>)
+      : undefined
+  const times = asNumber(usage?.times)
+  if (times !== undefined && Number.isInteger(times) && times >= 0) return times
+
+  const name = typeof record.name === 'string' ? record.name : ''
+  const description =
+    typeof record.desc === 'string'
+      ? record.desc
+      : typeof record.description === 'string'
+        ? record.description
+        : ''
+  const usageText = `${name} ${description}`
+  const match = usageText.match(/\b(\d+)\s*(?:\/\s*day|times?\s+per\s+day)\b/i)
+  return match ? Number(match[1]) : undefined
+}
+
 export function normalizeSrdCreature(raw: unknown): Creature {
   if (!raw || typeof raw !== 'object') {
     throw new Error('SRD creature response is not a valid stat block.')
@@ -197,6 +316,17 @@ export function normalizeSrdCreature(raw: unknown): Creature {
   const reactions = toActionList(record.reactions)
   const legendaryActions = toActionList(record.legendary_actions)
   const lairActions = toActionList(record.lair_actions)
+  const spellSlotLimits = readSpellSlotLimits(
+    record.spellcasting,
+    record.special_abilities,
+  )
+  const srdSpells = readSrdSpellReferences(
+    record.spellcasting,
+    record.special_abilities,
+  )
+  const legendaryResistanceLimit = readLegendaryResistanceLimit(
+    record.special_abilities,
+  )
   const spellcastingValue = Array.isArray(record.spellcasting)
     ? (record.spellcasting as Array<Record<string, unknown>>)
         .map((entry) => `${entry.name ?? 'Spellcasting'}: ${entry.desc ?? ''}`.trim())
@@ -205,9 +335,17 @@ export function normalizeSrdCreature(raw: unknown): Creature {
     : undefined
 
   const bossResources =
-    legendaryActions || lairActions || spellcastingValue
+    legendaryActions ||
+    lairActions ||
+    spellcastingValue ||
+    spellSlotLimits ||
+    legendaryResistanceLimit !== undefined
       ? {
+          ...(spellSlotLimits ? { spellSlots: spellSlotLimits } : {}),
           ...(legendaryActions ? { legendaryActions: legendaryActions.length } : {}),
+          ...(legendaryResistanceLimit !== undefined
+            ? { legendaryResistances: legendaryResistanceLimit }
+            : {}),
           ...(lairActions ? { hasLairActions: true } : {}),
         }
       : undefined
@@ -244,6 +382,7 @@ export function normalizeSrdCreature(raw: unknown): Creature {
     legendaryActions,
     lairActions,
     spellcasting: spellcastingValue,
+    srdSpells,
     bossResources,
     tags: typeof record.tags === 'string' ? record.tags.split(',').map((tag) => tag.trim()).filter(Boolean) : undefined,
   }
@@ -349,12 +488,57 @@ export class DnD5eApiProvider implements SrdProvider {
     return this.fetchJson(`${this.baseUrl}/monsters/${index}`)
   }
 
+  async fetchSpell(index: string): Promise<unknown> {
+    return this.fetchJson(`${this.baseUrl}/spells/${index}`)
+  }
+
   private async fetchJson(url: string): Promise<unknown> {
     const response = await fetch(url)
     if (!response.ok) {
       throw new Error(`SRD request failed for ${url}: ${response.status} ${response.statusText}`)
     }
     return response.json()
+  }
+}
+
+export async function loadSrdSpellDescription(
+  index: string,
+  fetchSpell: (index: string) => Promise<unknown> = (spellIndex) =>
+    new DnD5eApiProvider().fetchSpell(spellIndex),
+): Promise<SrdSpellDescription> {
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(index)) {
+    throw new Error('The SRD spell identifier is invalid.')
+  }
+
+  const payload = await fetchSpell(index)
+  if (!payload || typeof payload !== 'object') {
+    throw new Error(`The SRD description for ${index} is not available.`)
+  }
+  const record = payload as Record<string, unknown>
+  const name = typeof record.name === 'string' ? record.name.trim() : ''
+  const descriptionValue = record.desc
+  const description = Array.isArray(descriptionValue)
+    ? descriptionValue.filter((line): line is string => typeof line === 'string').join('\n\n')
+    : typeof descriptionValue === 'string'
+      ? descriptionValue.trim()
+      : ''
+  const higherLevel = Array.isArray(record.higher_level)
+    ? record.higher_level
+        .filter((line): line is string => typeof line === 'string')
+        .join('\n\n')
+    : typeof record.higher_level === 'string'
+      ? record.higher_level.trim()
+      : ''
+
+  if (!name || !description) {
+    throw new Error(`The SRD description for ${index} is not available.`)
+  }
+
+  return {
+    name,
+    description: higherLevel
+      ? `${description}\n\nAt Higher Levels. ${higherLevel}`
+      : description,
   }
 }
 

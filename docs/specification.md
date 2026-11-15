@@ -391,11 +391,22 @@ type CreatureAction = {
   description: string;
 };
 
-type BossResources = {
-  spellSlots?: Record<number, { max: number; used: number }>;
-  legendaryActions?: { max: number; used: number };
-  legendaryResistances?: { max: number; used: number };
+type BossResourceDefinition = {
+  spellSlots?: Record<number, number>;
+  legendaryActions?: number;
+  legendaryResistances?: number;
   hasLairActions?: boolean;
+};
+
+type LimitedUseResourceState = {
+  max: number;
+  used: number;
+};
+
+type BossResourceState = {
+  spellSlots?: Record<number, LimitedUseResourceState>;
+  legendaryActions?: LimitedUseResourceState;
+  legendaryResistances?: LimitedUseResourceState;
 };
 
 type Creature = {
@@ -419,7 +430,10 @@ type Creature = {
   actions?: CreatureAction[];
   reactions?: CreatureAction[];
   legendaryActions?: CreatureAction[];
-  bossResources?: BossResources;
+  lairActions?: CreatureAction[];
+  spellDescriptions?: CreatureAction[];
+  srdSpells?: { index: string; name: string; level: number }[];
+  bossResources?: BossResourceDefinition;
   tags?: string[];
   rawText?: string;
 };
@@ -447,7 +461,7 @@ type CombatantState = {
   currentHp: number;
   maxHp?: number;
   ac?: number;
-  bossResourcesState?: BossResources;
+  bossResourcesState?: BossResourceState;
 };
 
 type Encounter = {
@@ -599,9 +613,12 @@ type EncounterEnvironment = {
 - Increment round when wrapping  
 
 ### 7.5 Boss Resources
-- Copy creature resources into combat state  
-- Reset legendary actions each round  
-- Track spell slots, resistances, lair actions  
+- Copy creature resource definitions into independent combat state for each creature.
+- Let the DM spend and restore spell slots, legendary actions, and legendary resistances when defined.
+- Show spell slots in columns by level with a clickable dot for each slot.
+- Show available SRD spells as clickable names that open their descriptions; allow custom spell descriptions to be entered in the creature form and opened locally.
+- Reset legendary actions when the round wraps. Spell slots and legendary resistances persist until restored.
+- Show one non-turn lair action reminder at initiative count 20, after combatants tied at 20.
 
 ---
 

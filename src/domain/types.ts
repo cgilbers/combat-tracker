@@ -37,6 +37,8 @@ export type Creature = {
   legendaryActions?: CreatureAction[]
   lairActions?: CreatureAction[]
   spellcasting?: string
+  spellDescriptions?: CreatureSpellDescription[]
+  srdSpells?: SrdSpellReference[]
   bossResources?: BossResourceDefinition
   tags?: string[]
 }
@@ -55,11 +57,33 @@ export type CreatureAction = {
   description: string
 }
 
+export type CreatureSpellDescription = {
+  name: string
+  description: string
+}
+
+export type SrdSpellReference = {
+  index: string
+  name: string
+  level: number
+}
+
 export type BossResourceDefinition = {
   spellSlots?: Record<number, number>
   legendaryActions?: number
   legendaryResistances?: number
   hasLairActions?: boolean
+}
+
+export type LimitedUseResourceState = {
+  max: number
+  used: number
+}
+
+export type BossResourceState = {
+  spellSlots?: Record<number, LimitedUseResourceState>
+  legendaryActions?: LimitedUseResourceState
+  legendaryResistances?: LimitedUseResourceState
 }
 
 export type CombatantState = {
@@ -76,6 +100,7 @@ export type CombatantState = {
   isDelayed?: boolean
   originalInitiative?: number | null
   delayRound?: number
+  bossResourcesState?: BossResourceState
 }
 
 export type EncounterStatus = 'draft' | 'active' | 'paused' | 'complete'

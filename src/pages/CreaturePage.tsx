@@ -51,6 +51,7 @@ const emptyForm: CreatureForm = {
   legendaryActions: '',
   lairActions: '',
   spellcasting: '',
+  spellDescriptions: '',
   spellSlots: '',
   legendaryActionLimit: '',
   legendaryResistanceLimit: '',
@@ -92,6 +93,7 @@ function formFromCreature(creature: Creature): CreatureForm {
     legendaryActions: formatNamedEntries(creature.legendaryActions),
     lairActions: formatNamedEntries(creature.lairActions),
     spellcasting: creature.spellcasting ?? '',
+    spellDescriptions: formatNamedEntries(creature.spellDescriptions),
     spellSlots: formatNumericEntries(creature.bossResources?.spellSlots),
     legendaryActionLimit:
       creature.bossResources?.legendaryActions === undefined
@@ -203,6 +205,8 @@ export function CreaturePage({
       legendaryActions: parseNamedEntries(form.legendaryActions),
       lairActions: parseNamedEntries(form.lairActions),
       spellcasting: optionalText(form.spellcasting),
+      spellDescriptions: parseNamedEntries(form.spellDescriptions),
+      srdSpells: editingCreature?.srdSpells,
       bossResources,
       tags: form.tags
         .split(',')
