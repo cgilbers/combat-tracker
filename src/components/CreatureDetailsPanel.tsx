@@ -137,7 +137,7 @@ function SpellSlotTracker({
             key={level}
             className="flex flex-col items-center gap-2 border border-line px-1 py-2"
           >
-            <span className="font-mono text-[9px] text-muted">LEVEL {level}</span>
+            <span className="font-mono text-[9px] text-muted">LVL {level}</span>
             <div className="flex flex-col gap-1">
               {Array.from({ length: resource.max }, (_, index) => {
                 const isSpent = index < resource.used
