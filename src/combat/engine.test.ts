@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  adjustBossResource,
   activateEncounter,
   addCreatureGroup,
   completeEncounter,
@@ -143,6 +144,39 @@ describe('combat engine', () => {
     })
   })
 
+  it('initializes missing resource state when resuming an older encounter', () => {
+    const boss = {
+      ...creature,
+      bossResources: { legendaryActions: 2, hasLairActions: true },
+    }
+    const started = startEncounter(
+      { ...encounter, creatureSnapshots: { [boss.id]: boss } },
+      party,
+      { 'pc-1': 12 },
+      (() => {
+        let id = 0
+        return () => `legacy-${id++}`
+      })(),
+    )
+    const previousEncounter = {
+      ...started,
+      status: 'paused' as const,
+      combatants: started.combatants.map((combatant) => ({
+        ...combatant,
+        bossResourcesState: undefined,
+      })),
+    }
+    const resumed = activateEncounter([previousEncounter], previousEncounter.id)[0]
+    const resumedBoss = resumed.combatants.find(
+      (combatant) => combatant.type === 'creature',
+    )
+
+    expect(resumedBoss?.bossResourcesState).toEqual({
+      legendaryActions: { max: 2, used: 0 },
+      lairActions: { max: 1, used: 0 },
+    })
+  })
+
   it('gives each creature group a shared initiative and individual HP', () => {
     const firstGroup = { ...encounter, creatureGroups: [{ ...encounter.creatureGroups[0], quantity: 2 }] }
     const secondGroup = addCreatureGroup(firstGroup, creature, 1, () => 'group-2')
@@ -174,6 +208,234 @@ describe('combat engine', () => {
     expect(damaged.combatants.filter((combatant) => combatant.type === 'creature').map(
       (combatant) => combatant.currentHp,
     )).toEqual([5, 10, 10])
+  })
+
+  it('initializes independent encounter resource counters without changing creature definitions', () => {
+    const boss = {
+      ...creature,
+      bossResources: {
+        spellSlots: { 1: 2, 3: 1 },
+        legendaryActions: 3,
+        legendaryResistances: 2,
+      },
+      lairActions: [{ name: 'Lair action', description: 'A sample lair action.' }],
+    }
+    const group = { ...encounter.creatureGroups[0], quantity: 2 }
+    const started = startEncounter(
+      { ...encounter, creatureGroups: [group], creatureSnapshots: { [boss.id]: boss } },
+      party,
+      { 'pc-1': 12 },
+      (() => {
+        let id = 0
+        return () => `boss-${id++}`
+      })(),
+    )
+    const bosses = started.combatants.filter(
+      (combatant) => combatant.type === 'creature',
+    )
+    const spent = adjustBossResource(
+      started,
+      bosses[0].id,
+      'spellSlots',
+      'spend',
+      1,
+    )
+
+    expect(bosses.map((combatant) => combatant.bossResourcesState)).toEqual([
+      {
+        spellSlots: { 1: { max: 2, used: 0 }, 3: { max: 1, used: 0 } },
+        legendaryActions: { max: 3, used: 0 },
+        legendaryResistances: { max: 2, used: 0 },
+        lairActions: { max: 1, used: 0 },
+      },
+      {
+        spellSlots: { 1: { max: 2, used: 0 }, 3: { max: 1, used: 0 } },
+        legendaryActions: { max: 3, used: 0 },
+        legendaryResistances: { max: 2, used: 0 },
+        lairActions: { max: 1, used: 0 },
+      },
+    ])
+    expect(spent.combatants.find((combatant) => combatant.id === bosses[0].id)
+      ?.bossResourcesState?.spellSlots?.[1].used).toBe(1)
+    expect(spent.combatants.find((combatant) => combatant.id === bosses[1].id)
+      ?.bossResourcesState?.spellSlots?.[1].used).toBe(0)
+    expect(boss.bossResources?.spellSlots).toEqual({ 1: 2, 3: 1 })
+  })
+
+  it('spends and restores all tracked resources within their defined bounds', () => {
+    const boss = {
+      ...creature,
+      bossResources: {
+        spellSlots: { 1: 1 },
+        legendaryActions: 1,
+        legendaryResistances: 1,
+        hasLairActions: true,
+      },
+    }
+    const started = startEncounter(
+      { ...encounter, creatureSnapshots: { [boss.id]: boss } },
+      party,
+      { 'pc-1': 12 },
+      (() => {
+        let id = 0
+        return () => `boss-${id++}`
+      })(),
+    )
+    const bossCombatant = started.combatants.find(
+      (combatant) => combatant.type === 'creature',
+    )!
+    const spendAll = (value: Encounter) =>
+      ([
+        ['spellSlots', 1],
+        ['legendaryActions', undefined],
+        ['legendaryResistances', undefined],
+        ['lairActions', undefined],
+      ] as const).reduce(
+        (updated, [resource, level]) =>
+          adjustBossResource(updated, bossCombatant.id, resource, 'spend', level),
+        value,
+      )
+    const spent = spendAll(started)
+    const spentAgain = spendAll(spent)
+    const restored = ([
+      ['spellSlots', 1],
+      ['legendaryActions', undefined],
+      ['legendaryResistances', undefined],
+      ['lairActions', undefined],
+    ] as const).reduce(
+      (updated, [resource, level]) =>
+        adjustBossResource(updated, bossCombatant.id, resource, 'restore', level),
+      spentAgain,
+    )
+    const restoredAgain = ([
+      ['spellSlots', 1],
+      ['legendaryActions', undefined],
+      ['legendaryResistances', undefined],
+      ['lairActions', undefined],
+    ] as const).reduce(
+      (updated, [resource, level]) =>
+        adjustBossResource(updated, bossCombatant.id, resource, 'restore', level),
+      restored,
+    )
+    const state = restoredAgain.combatants.find(
+      (combatant) => combatant.id === bossCombatant.id,
+    )?.bossResourcesState
+
+    expect(spentAgain.combatants.find((combatant) => combatant.id === bossCombatant.id)
+      ?.bossResourcesState).toMatchObject({
+      spellSlots: { 1: { used: 1 } },
+      legendaryActions: { used: 1 },
+      legendaryResistances: { used: 1 },
+      lairActions: { used: 1 },
+    })
+    expect(state).toMatchObject({
+      spellSlots: { 1: { used: 0 } },
+      legendaryActions: { used: 0 },
+      legendaryResistances: { used: 0 },
+      lairActions: { used: 0 },
+    })
+  })
+
+  it('resets round-scoped resources at round rollover, preserving other resource usage', () => {
+    const boss = {
+      ...creature,
+      bossResources: {
+        spellSlots: { 1: 2 },
+        legendaryActions: 2,
+        legendaryResistances: 2,
+        hasLairActions: true,
+      },
+    }
+    const started = startEncounter(
+      { ...encounter, creatureSnapshots: { [boss.id]: boss } },
+      party,
+      { 'pc-1': 12 },
+      (() => {
+        let id = 0
+        return () => `boss-${id++}`
+      })(),
+    )
+    const bossCombatant = started.combatants.find(
+      (combatant) => combatant.type === 'creature',
+    )!
+    const spent = ([
+      ['spellSlots', 1],
+      ['legendaryActions', undefined],
+      ['legendaryResistances', undefined],
+      ['lairActions', undefined],
+    ] as const).reduce(
+      (updated, [resource, level]) =>
+        adjustBossResource(updated, bossCombatant.id, resource, 'spend', level),
+      started,
+    )
+    const next = nextTurn(spent)
+    const stateBeforeWrap = next.combatants.find(
+      (combatant) => combatant.id === bossCombatant.id,
+    )?.bossResourcesState
+    const wrapped = nextTurn(next)
+    const state = wrapped.combatants.find(
+      (combatant) => combatant.id === bossCombatant.id,
+    )?.bossResourcesState
+
+    expect(wrapped.round).toBe(2)
+    expect(next.round).toBe(1)
+    expect(stateBeforeWrap).toMatchObject({
+      legendaryActions: { used: 1 },
+      lairActions: { used: 1 },
+    })
+    expect(state).toMatchObject({
+      spellSlots: { 1: { used: 1 } },
+      legendaryActions: { used: 0 },
+      legendaryResistances: { used: 1 },
+      lairActions: { used: 0 },
+    })
+  })
+
+  it('resets round-scoped resources when delaying the last turn crosses a round boundary', () => {
+    const boss = {
+      ...creature,
+      bossResources: {
+        spellSlots: { 1: 2 },
+        legendaryActions: 2,
+        legendaryResistances: 2,
+        hasLairActions: true,
+      },
+    }
+    let id = 0
+    const started = startEncounter(
+      {
+        ...encounter,
+        creatureGroups: [{ ...encounter.creatureGroups[0], initiative: 10 }],
+        creatureSnapshots: { [boss.id]: boss },
+      },
+      party,
+      { 'pc-1': 12 },
+      () => `delayed-boss-${id++}`,
+    )
+    const bossCombatant = started.combatants.find(
+      (combatant) => combatant.type === 'creature',
+    )!
+    const bossTurn = nextTurn(started)
+    const spent = ([
+      ['spellSlots', 1],
+      ['legendaryActions', undefined],
+      ['legendaryResistances', undefined],
+      ['lairActions', undefined],
+    ] as const).reduce(
+      (updated, [resource, level]) =>
+        adjustBossResource(updated, bossCombatant.id, resource, 'spend', level),
+      bossTurn,
+    )
+    const delayed = delayCombatant(spent, bossCombatant.id)
+    const state = delayed.delayedCombatants?.[0].bossResourcesState
+
+    expect(delayed.round).toBe(2)
+    expect(state).toMatchObject({
+      spellSlots: { 1: { used: 1 } },
+      legendaryActions: { used: 0 },
+      legendaryResistances: { used: 1 },
+      lairActions: { used: 0 },
+    })
   })
 
   it('rolls one d20 plus Dexterity for each group and shares that result with its members', () => {

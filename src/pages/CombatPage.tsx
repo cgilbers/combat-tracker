@@ -3,6 +3,7 @@ import { Button } from '../components/Button'
 import { CreatureDetailsPanel } from '../components/CreatureDetailsPanel'
 import { Panel } from '../components/Panel'
 import type { Encounter } from '../domain/types'
+import type { BossResourceKind, ResourceAdjustment } from '../combat/engine'
 import { InitiativeRow } from './combat/InitiativeRow'
 
 type CombatPageProps = {
@@ -17,6 +18,12 @@ type CombatPageProps = {
     direction: 'damage' | 'heal',
     amount: string,
   ) => void
+  onAdjustBossResource: (
+    combatantId: string,
+    resource: BossResourceKind,
+    direction: ResourceAdjustment,
+    spellSlotLevel?: number,
+  ) => void
 }
 
 export function CombatPage({
@@ -27,17 +34,20 @@ export function CombatPage({
   onDelayTurn,
   onResumeTurn,
   onAdjustCreatureHp,
+  onAdjustBossResource,
 }: CombatPageProps) {
   const [selectedCombatantId, setSelectedCombatantId] = useState('')
   const currentCombatant =
     encounter?.combatants[encounter.currentTurnIndex]
-  const creatureCombatants =
-    encounter?.combatants.filter((combatant) => combatant.type === 'creature') ?? []
+  const creatureCombatants = [
+    ...(encounter?.combatants.filter((combatant) => combatant.type === 'creature') ?? []),
+    ...(encounter?.delayedCombatants?.filter(
+      (combatant) => combatant.type === 'creature',
+    ) ?? []),
+  ]
   const selectedCombatant =
     creatureCombatants.find((combatant) => combatant.id === selectedCombatantId) ??
-    creatureCombatants.find(
-      (combatant) => combatant.id === encounter?.combatants[encounter.currentTurnIndex]?.id,
-    ) ??
+    creatureCombatants.find((combatant) => combatant.id === currentCombatant?.id) ??
     creatureCombatants[0]
   const selectedCreature = selectedCombatant
     ? encounter?.creatureSnapshots[selectedCombatant.refId]
@@ -138,9 +148,27 @@ export function CombatPage({
                       className="flex flex-wrap items-center gap-3 border border-accent/40 bg-raised p-3"
                     >
                       <div className="min-w-0 flex-1">
-                        <strong className="block truncate text-sm text-ink">
-                          {combatant.name}
-                        </strong>
+                        {combatant.type === 'creature' ? (
+                          <button
+                            type="button"
+                            aria-pressed={selectedCombatant?.id === combatant.id}
+                            className="block min-w-0 text-left"
+                            onClick={() => setSelectedCombatantId(combatant.id)}
+                          >
+                            <strong className="block truncate text-sm text-ink">
+                              {combatant.name}
+                            </strong>
+                            <small className="text-xs text-muted">
+                              {selectedCombatant?.id === combatant.id
+                                ? 'Selected creature'
+                                : 'Creature · view details'}
+                            </small>
+                          </button>
+                        ) : (
+                          <strong className="block truncate text-sm text-ink">
+                            {combatant.name}
+                          </strong>
+                        )}
                         <small className="text-xs text-muted">Delayed</small>
                       </div>
                       <Button
@@ -160,6 +188,8 @@ export function CombatPage({
         <CreatureDetailsPanel
           creature={selectedCreature}
           combatant={selectedCombatant}
+          canAdjustBossResources={encounter.status === 'active'}
+          onAdjustBossResource={onAdjustBossResource}
         />
       )}
     </div>

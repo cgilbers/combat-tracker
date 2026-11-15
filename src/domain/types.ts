@@ -62,6 +62,18 @@ export type BossResourceDefinition = {
   hasLairActions?: boolean
 }
 
+export type LimitedUseResourceState = {
+  max: number
+  used: number
+}
+
+export type BossResourceState = {
+  spellSlots?: Record<number, LimitedUseResourceState>
+  legendaryActions?: LimitedUseResourceState
+  legendaryResistances?: LimitedUseResourceState
+  lairActions?: LimitedUseResourceState
+}
+
 export type CombatantState = {
   id: string
   type: CombatantType
@@ -76,6 +88,7 @@ export type CombatantState = {
   isDelayed?: boolean
   originalInitiative?: number | null
   delayRound?: number
+  bossResourcesState?: BossResourceState
 }
 
 export type EncounterStatus = 'draft' | 'active' | 'paused' | 'complete'

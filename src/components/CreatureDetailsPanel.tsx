@@ -1,14 +1,24 @@
 import { Panel } from './Panel'
+import { Button } from './Button'
+import type { BossResourceKind, ResourceAdjustment } from '../combat/engine'
 import type {
   AbilityScores,
   CombatantState,
   Creature,
   CreatureAction,
+  LimitedUseResourceState,
 } from '../domain/types'
 
 type CreatureDetailsPanelProps = {
   creature?: Creature
   combatant?: CombatantState
+  canAdjustBossResources?: boolean
+  onAdjustBossResource?: (
+    combatantId: string,
+    resource: BossResourceKind,
+    direction: ResourceAdjustment,
+    spellSlotLevel?: number,
+  ) => void
 }
 
 const abilityNames: { key: keyof AbilityScores; label: string }[] = [
@@ -56,9 +66,57 @@ function DetailSection({
   )
 }
 
+function ResourceCounter({
+  label,
+  resource,
+  kind,
+  spellSlotLevel,
+  canAdjust,
+  onAdjust,
+}: {
+  label: string
+  resource: LimitedUseResourceState
+  kind: BossResourceKind
+  spellSlotLevel?: number
+  canAdjust: boolean
+  onAdjust: (
+    kind: BossResourceKind,
+    direction: ResourceAdjustment,
+    spellSlotLevel?: number,
+  ) => void
+}) {
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-2 border border-line p-2">
+      <span className="text-sm text-ink">
+        {label}: {resource.max - resource.used} / {resource.max} available
+      </span>
+      <div className="flex gap-2">
+        <Button
+          aria-label={`Spend one ${label}`}
+          disabled={!canAdjust || resource.used >= resource.max}
+          className="px-2 py-1"
+          onClick={() => onAdjust(kind, 'spend', spellSlotLevel)}
+        >
+          Spend
+        </Button>
+        <Button
+          aria-label={`Restore one ${label}`}
+          disabled={!canAdjust || resource.used <= 0}
+          className="px-2 py-1"
+          onClick={() => onAdjust(kind, 'restore', spellSlotLevel)}
+        >
+          Restore
+        </Button>
+      </div>
+    </li>
+  )
+}
+
 export function CreatureDetailsPanel({
   creature,
   combatant,
+  canAdjustBossResources = false,
+  onAdjustBossResource,
 }: CreatureDetailsPanelProps) {
   if (!creature) {
     return (
@@ -79,6 +137,15 @@ export function CreatureDetailsPanel({
   const spellSlots = Object.entries(resources?.spellSlots ?? {}).sort(
     ([first], [second]) => Number(first) - Number(second),
   )
+  const encounterResources = combatant?.bossResourcesState
+  const adjustResource = (
+    resource: BossResourceKind,
+    direction: ResourceAdjustment,
+    spellSlotLevel?: number,
+  ) => {
+    if (!combatant || !onAdjustBossResource) return
+    onAdjustBossResource(combatant.id, resource, direction, spellSlotLevel)
+  }
   const abilityScores = creature.abilities
   const abilities = abilityScores
     ? abilityNames.map(({ key, label }) => ({
@@ -180,6 +247,56 @@ export function CreatureDetailsPanel({
           <p className="whitespace-pre-line text-sm text-muted">
             {creature.spellcasting}
           </p>
+        </section>
+      )}
+
+      {encounterResources && (
+        <section className="mt-5 border-t border-line pt-4">
+          <h3 className="mb-2 font-mono text-[10px] tracking-[1px] text-accent">
+            ENCOUNTER RESOURCES
+          </h3>
+          <ul className="space-y-2">
+            {Object.entries(encounterResources.spellSlots ?? {})
+              .sort(([first], [second]) => Number(first) - Number(second))
+              .map(([level, slot]) => (
+                <ResourceCounter
+                  key={level}
+                  label={`Level ${level} spell slot`}
+                  resource={slot}
+                  kind="spellSlots"
+                  spellSlotLevel={Number(level)}
+                  canAdjust={canAdjustBossResources}
+                  onAdjust={adjustResource}
+                />
+              ))}
+            {encounterResources.legendaryActions && (
+              <ResourceCounter
+                label="Legendary action"
+                resource={encounterResources.legendaryActions}
+                kind="legendaryActions"
+                canAdjust={canAdjustBossResources}
+                onAdjust={adjustResource}
+              />
+            )}
+            {encounterResources.legendaryResistances && (
+              <ResourceCounter
+                label="Legendary resistance"
+                resource={encounterResources.legendaryResistances}
+                kind="legendaryResistances"
+                canAdjust={canAdjustBossResources}
+                onAdjust={adjustResource}
+              />
+            )}
+            {encounterResources.lairActions && (
+              <ResourceCounter
+                label="Lair action"
+                resource={encounterResources.lairActions}
+                kind="lairActions"
+                canAdjust={canAdjustBossResources}
+                onAdjust={adjustResource}
+              />
+            )}
+          </ul>
         </section>
       )}
 

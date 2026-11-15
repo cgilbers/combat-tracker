@@ -1,6 +1,7 @@
 import { useEffect, useState, type ChangeEvent } from 'react'
 import { Moon, Sun } from 'lucide-react'
 import {
+  adjustBossResource,
   activateEncounter,
   addCreatureGroup,
   completeEncounter,
@@ -17,6 +18,7 @@ import {
   updateCreatureGroup,
   updateCreatureHp,
 } from './combat/engine'
+import type { BossResourceKind, ResourceAdjustment } from './combat/engine'
 import { Button } from './components/Button'
 import { useAppData } from './data/useAppData'
 import type { Encounter, Party } from './domain/types'
@@ -198,6 +200,24 @@ function App() {
         encounter,
         combatantId,
         direction === 'damage' ? -amount : amount,
+      ),
+    )
+  }
+
+  const adjustEncounterBossResource = (
+    combatantId: string,
+    resource: BossResourceKind,
+    direction: ResourceAdjustment,
+    spellSlotLevel?: number,
+  ) => {
+    if (!encounter) return
+    updateEncounter(
+      adjustBossResource(
+        encounter,
+        combatantId,
+        resource,
+        direction,
+        spellSlotLevel,
       ),
     )
   }
@@ -389,6 +409,7 @@ function App() {
             onDelayTurn={delayCurrentTurn}
             onResumeTurn={resumeDelayedTurn}
             onAdjustCreatureHp={adjustCreatureHp}
+            onAdjustBossResource={adjustEncounterBossResource}
           />
         </div>
       </section>
