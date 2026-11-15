@@ -615,6 +615,7 @@ type EncounterEnvironment = {
 - Copy creature resource definitions into independent combat state for each creature.
 - Let the DM spend and restore spell slots, legendary actions, legendary resistances, and one lair action when defined.
 - Reset legendary actions and lair actions when the round wraps. Spell slots and legendary resistances persist until restored.
+- Show one non-turn lair action reminder at initiative count 20, after combatants tied at 20.
 
 ---
 

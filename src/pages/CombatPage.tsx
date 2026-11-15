@@ -4,7 +4,9 @@ import { CreatureDetailsPanel } from '../components/CreatureDetailsPanel'
 import { Panel } from '../components/Panel'
 import type { Encounter } from '../domain/types'
 import type { BossResourceKind, ResourceAdjustment } from '../combat/engine'
+import { buildInitiativeOrder } from '../combat/initiativeOrder'
 import { InitiativeRow } from './combat/InitiativeRow'
+import { CountBadge } from '../components/CountBadge'
 
 type CombatPageProps = {
   encounter: Encounter | null
@@ -52,6 +54,15 @@ export function CombatPage({
   const selectedCreature = selectedCombatant
     ? encounter?.creatureSnapshots[selectedCombatant.refId]
     : undefined
+  const hasLairActions = Object.values(encounter?.creatureSnapshots ?? {}).some(
+    (creature) =>
+      (creature.lairActions?.length ?? 0) > 0 ||
+      creature.bossResources?.hasLairActions,
+  )
+  const initiativeOrder = buildInitiativeOrder(
+    encounter?.combatants ?? [],
+    hasLairActions,
+  )
 
   return (
     <div className="grid h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1.2fr)_minmax(0,1fr)] gap-3 overflow-hidden xl:grid-cols-[minmax(0,3fr)_minmax(18rem,1fr)] xl:grid-rows-1 xl:gap-5">
@@ -129,17 +140,38 @@ export function CombatPage({
                   No active combatants. Resume a delayed turn to continue.
                 </p>
               )}
-              {encounter.combatants.map((combatant, index) => (
-                <InitiativeRow
-                  key={combatant.id}
-                  combatant={combatant}
-                  isCurrentTurn={index === encounter.currentTurnIndex}
-                  isSelected={selectedCombatant?.id === combatant.id}
-                  canAdjustHp={encounter.status === 'active'}
-                  onSelect={() => setSelectedCombatantId(combatant.id)}
-                  onAdjustCreatureHp={onAdjustCreatureHp}
-                />
-              ))}
+              {initiativeOrder.map((item) =>
+                item.kind === 'lair-action' ? (
+                  <div
+                    key="lair-action-reminder"
+                    className="flex items-center gap-3 border border-accent/50 bg-accent-soft p-3 sm:p-4"
+                  >
+                    <CountBadge className="text-center">20</CountBadge>
+                    <span
+                      aria-label="Lair action reminder"
+                      className="grid size-8 shrink-0 place-items-center border border-accent font-mono text-[11px] text-accent"
+                    >
+                      L
+                    </span>
+                    <div className="min-w-0">
+                      <strong className="block text-sm text-ink">Lair Action</strong>
+                      <small className="text-xs text-muted">
+                        Reminder · at initiative count 20, after ties
+                      </small>
+                    </div>
+                  </div>
+                ) : (
+                  <InitiativeRow
+                    key={item.combatant.id}
+                    combatant={item.combatant}
+                    isCurrentTurn={item.index === encounter.currentTurnIndex}
+                    isSelected={selectedCombatant?.id === item.combatant.id}
+                    canAdjustHp={encounter.status === 'active'}
+                    onSelect={() => setSelectedCombatantId(item.combatant.id)}
+                    onAdjustCreatureHp={onAdjustCreatureHp}
+                  />
+                ),
+              )}
               {encounter.status === 'active' &&
                 encounter.delayedCombatants?.map((combatant) => {
                   return (
