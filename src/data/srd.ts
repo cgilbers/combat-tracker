@@ -142,10 +142,16 @@ function parseNameValueMap(value: unknown): Record<string, number> | undefined {
   return Object.keys(entries).length ? entries : undefined
 }
 
-function readSpellSlotLimits(spellcasting: unknown): Record<number, number> | undefined {
-  if (!Array.isArray(spellcasting)) return undefined
+function readSpellSlotLimits(
+  spellcasting: unknown,
+  specialAbilities: unknown,
+): Record<number, number> | undefined {
+  const entries = [
+    ...(Array.isArray(spellcasting) ? spellcasting : []),
+    ...(Array.isArray(specialAbilities) ? specialAbilities : []),
+  ]
 
-  for (const entry of spellcasting) {
+  for (const entry of entries) {
     if (!entry || typeof entry !== 'object') continue
     const spellcastingRecord = (entry as Record<string, unknown>).spellcasting
     if (!spellcastingRecord || typeof spellcastingRecord !== 'object') continue
@@ -256,7 +262,10 @@ export function normalizeSrdCreature(raw: unknown): Creature {
   const reactions = toActionList(record.reactions)
   const legendaryActions = toActionList(record.legendary_actions)
   const lairActions = toActionList(record.lair_actions)
-  const spellSlotLimits = readSpellSlotLimits(record.spellcasting)
+  const spellSlotLimits = readSpellSlotLimits(
+    record.spellcasting,
+    record.special_abilities,
+  )
   const legendaryResistanceLimit = readLegendaryResistanceLimit(
     record.special_abilities,
   )

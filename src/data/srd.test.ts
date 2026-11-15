@@ -99,8 +99,6 @@ describe('SRD creature import', () => {
           desc: 'If the lich fails a saving throw, it can choose to succeed instead.',
           usage: { type: 'per day', times: 3, rest_types: [] },
         },
-      ],
-      spellcasting: [
         {
           name: 'Spellcasting',
           desc: 'The lich has the following wizard spells prepared:\n1st level (4 slots): shield\n2nd level (3 slots): invisibility',
