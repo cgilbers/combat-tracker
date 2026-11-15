@@ -142,6 +142,65 @@ function parseNameValueMap(value: unknown): Record<string, number> | undefined {
   return Object.keys(entries).length ? entries : undefined
 }
 
+function readSpellSlotLimits(spellcasting: unknown): Record<number, number> | undefined {
+  if (!Array.isArray(spellcasting)) return undefined
+
+  for (const entry of spellcasting) {
+    if (!entry || typeof entry !== 'object') continue
+    const spellcastingRecord = (entry as Record<string, unknown>).spellcasting
+    if (!spellcastingRecord || typeof spellcastingRecord !== 'object') continue
+    const slots = (spellcastingRecord as Record<string, unknown>).slots
+    if (!slots || typeof slots !== 'object') continue
+
+    const limits = Object.fromEntries(
+      Object.entries(slots as Record<string, unknown>)
+        .map(([level, count]) => [Number(level), asNumber(count)] as const)
+        .filter(
+          (entry): entry is readonly [number, number] =>
+            Number.isInteger(entry[0]) &&
+            entry[0] >= 1 &&
+            entry[0] <= 9 &&
+            entry[1] !== undefined &&
+            Number.isInteger(entry[1]) &&
+            entry[1] >= 0,
+        ),
+    )
+    if (Object.keys(limits).length > 0) return limits
+  }
+
+  return undefined
+}
+
+function readLegendaryResistanceLimit(specialAbilities: unknown): number | undefined {
+  if (!Array.isArray(specialAbilities)) return undefined
+
+  const resistance = specialAbilities.find((ability) => {
+    if (!ability || typeof ability !== 'object') return false
+    const name = (ability as Record<string, unknown>).name
+    return typeof name === 'string' && /^legendary resistance\b/i.test(name)
+  })
+  if (!resistance || typeof resistance !== 'object') return undefined
+
+  const record = resistance as Record<string, unknown>
+  const usage =
+    record.usage && typeof record.usage === 'object'
+      ? (record.usage as Record<string, unknown>)
+      : undefined
+  const times = asNumber(usage?.times)
+  if (times !== undefined && Number.isInteger(times) && times >= 0) return times
+
+  const name = typeof record.name === 'string' ? record.name : ''
+  const description =
+    typeof record.desc === 'string'
+      ? record.desc
+      : typeof record.description === 'string'
+        ? record.description
+        : ''
+  const usageText = `${name} ${description}`
+  const match = usageText.match(/\b(\d+)\s*(?:\/\s*day|times?\s+per\s+day)\b/i)
+  return match ? Number(match[1]) : undefined
+}
+
 export function normalizeSrdCreature(raw: unknown): Creature {
   if (!raw || typeof raw !== 'object') {
     throw new Error('SRD creature response is not a valid stat block.')
@@ -197,6 +256,10 @@ export function normalizeSrdCreature(raw: unknown): Creature {
   const reactions = toActionList(record.reactions)
   const legendaryActions = toActionList(record.legendary_actions)
   const lairActions = toActionList(record.lair_actions)
+  const spellSlotLimits = readSpellSlotLimits(record.spellcasting)
+  const legendaryResistanceLimit = readLegendaryResistanceLimit(
+    record.special_abilities,
+  )
   const spellcastingValue = Array.isArray(record.spellcasting)
     ? (record.spellcasting as Array<Record<string, unknown>>)
         .map((entry) => `${entry.name ?? 'Spellcasting'}: ${entry.desc ?? ''}`.trim())
@@ -205,9 +268,17 @@ export function normalizeSrdCreature(raw: unknown): Creature {
     : undefined
 
   const bossResources =
-    legendaryActions || lairActions || spellcastingValue
+    legendaryActions ||
+    lairActions ||
+    spellcastingValue ||
+    spellSlotLimits ||
+    legendaryResistanceLimit !== undefined
       ? {
+          ...(spellSlotLimits ? { spellSlots: spellSlotLimits } : {}),
           ...(legendaryActions ? { legendaryActions: legendaryActions.length } : {}),
+          ...(legendaryResistanceLimit !== undefined
+            ? { legendaryResistances: legendaryResistanceLimit }
+            : {}),
           ...(lairActions ? { hasLairActions: true } : {}),
         }
       : undefined

@@ -112,6 +112,68 @@ function ResourceCounter({
   )
 }
 
+function SpellSlotTracker({
+  slots,
+  canAdjust,
+  onAdjust,
+}: {
+  slots: Record<number, LimitedUseResourceState>
+  canAdjust: boolean
+  onAdjust: (level: number, direction: ResourceAdjustment) => void
+}) {
+  const levels = Object.entries(slots).sort(
+    ([first], [second]) => Number(first) - Number(second),
+  )
+
+  return (
+    <div
+      className="grid grid-flow-col auto-cols-[minmax(2.5rem,1fr)] gap-1 overflow-x-auto"
+      aria-label="Spell slots by level"
+    >
+      {levels.map(([level, resource]) => {
+        const available = resource.max - resource.used
+        return (
+          <div
+            key={level}
+            className="flex flex-col items-center gap-2 border border-line px-1 py-2"
+          >
+            <span className="font-mono text-[9px] text-muted">LEVEL {level}</span>
+            <div className="flex flex-col gap-1">
+              {Array.from({ length: resource.max }, (_, index) => {
+                const isAvailable = index < available
+                const action = isAvailable ? 'spend' : 'restore'
+                return (
+                  <button
+                    key={index}
+                    type="button"
+                    aria-label={`${isAvailable ? 'Spend' : 'Restore'} level ${level} spell slot ${index + 1} of ${resource.max}`}
+                    aria-pressed={isAvailable}
+                    disabled={!canAdjust}
+                    className="grid size-8 place-items-center rounded-full disabled:cursor-not-allowed"
+                    onClick={() => onAdjust(Number(level), action)}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`size-3 rounded-full ${
+                        isAvailable
+                          ? 'bg-accent'
+                          : 'border border-muted bg-transparent'
+                      }`}
+                    />
+                  </button>
+                )
+              })}
+            </div>
+            <span className="font-mono text-[9px] text-muted">
+              {available}/{resource.max}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export function CreatureDetailsPanel({
   creature,
   combatant,
@@ -255,39 +317,42 @@ export function CreatureDetailsPanel({
           <h3 className="mb-2 font-mono text-[10px] tracking-[1px] text-accent">
             ENCOUNTER RESOURCES
           </h3>
-          <ul className="space-y-2">
-            {Object.entries(encounterResources.spellSlots ?? {})
-              .sort(([first], [second]) => Number(first) - Number(second))
-              .map(([level, slot]) => (
+          <div className="space-y-3">
+            {Object.keys(encounterResources.spellSlots ?? {}).length > 0 && (
+              <section>
+                <h4 className="mb-1 text-xs text-muted">Spell slots</h4>
+                <SpellSlotTracker
+                  slots={encounterResources.spellSlots ?? {}}
+                  canAdjust={canAdjustBossResources}
+                  onAdjust={(level, direction) =>
+                    adjustResource('spellSlots', direction, level)
+                  }
+                />
+              </section>
+            )}
+            {encounterResources.legendaryActions && (
+              <ul>
                 <ResourceCounter
-                  key={level}
-                  label={`Level ${level} spell slot`}
-                  resource={slot}
-                  kind="spellSlots"
-                  spellSlotLevel={Number(level)}
+                  label="Legendary action"
+                  resource={encounterResources.legendaryActions}
+                  kind="legendaryActions"
                   canAdjust={canAdjustBossResources}
                   onAdjust={adjustResource}
                 />
-              ))}
-            {encounterResources.legendaryActions && (
-              <ResourceCounter
-                label="Legendary action"
-                resource={encounterResources.legendaryActions}
-                kind="legendaryActions"
-                canAdjust={canAdjustBossResources}
-                onAdjust={adjustResource}
-              />
+              </ul>
             )}
             {encounterResources.legendaryResistances && (
-              <ResourceCounter
-                label="Legendary resistance"
-                resource={encounterResources.legendaryResistances}
-                kind="legendaryResistances"
-                canAdjust={canAdjustBossResources}
-                onAdjust={adjustResource}
-              />
+              <ul>
+                <ResourceCounter
+                  label="Legendary resistance"
+                  resource={encounterResources.legendaryResistances}
+                  kind="legendaryResistances"
+                  canAdjust={canAdjustBossResources}
+                  onAdjust={adjustResource}
+                />
+              </ul>
             )}
-          </ul>
+          </div>
         </section>
       )}
 

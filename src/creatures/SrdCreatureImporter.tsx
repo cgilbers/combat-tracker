@@ -51,6 +51,7 @@ export function SrdCreatureImporter({
   )
 
   const importCreature = async (summary: SrdMonsterSummary) => {
+    const wasImported = importedIds.has(`srd:${summary.index}`)
     setImportingIndex(summary.index)
     setFailedIndex('')
     setImportError('')
@@ -66,9 +67,13 @@ export function SrdCreatureImporter({
       await onImportCreature(result.creature)
       setFailedIndex('')
       setImportMessage(
-        result.status === 'cache'
-          ? `${summary.name} was added from the offline cache.`
-          : `${summary.name} was imported and saved locally.`,
+        wasImported
+          ? result.status === 'cache'
+            ? `${summary.name} was loaded from the offline cache; it may not include recent updates.`
+            : `${summary.name} was updated and saved locally.`
+          : result.status === 'cache'
+            ? `${summary.name} was added from the offline cache.`
+            : `${summary.name} was imported and saved locally.`,
       )
     } catch {
       setFailedIndex(summary.index)
@@ -94,7 +99,7 @@ export function SrdCreatureImporter({
             <div>
               <strong className="font-display text-lg font-medium text-ink">Import from the SRD</strong>
               <p className="mt-1 text-xs leading-relaxed text-muted">
-                Search the catalog, then import a creature to keep its stat block available offline.
+                Search the catalog to import creatures or refresh their saved SRD stat blocks.
               </p>
             </div>
             <Button variant="ghost" className="shrink-0" onClick={() => setIsOpen(false)}>
@@ -149,13 +154,13 @@ export function SrdCreatureImporter({
                         <div className="flex items-center justify-between gap-3 border-b border-line px-3 py-2 last:border-b-0" key={summary.index}>
                           <span className="text-sm text-ink">{summary.name}</span>
                           <Button
-                            disabled={isImported || Boolean(importingIndex)}
+                            disabled={Boolean(importingIndex)}
                             onClick={() => void importCreature(summary)}
                           >
                             {isImporting
                               ? 'Importing…'
                               : isImported
-                                ? 'Imported'
+                                ? 'Update'
                                 : failedIndex === summary.index
                                   ? 'Retry'
                                   : 'Import'}
