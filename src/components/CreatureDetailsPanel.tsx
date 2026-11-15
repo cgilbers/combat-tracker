@@ -242,7 +242,6 @@ function SpellDescriptionPopup({
       ref={dialogRef}
       aria-labelledby="spell-description-title"
       className="m-auto max-h-[85dvh] w-[min(90vw,40rem)] max-w-none overflow-y-auto border border-line bg-panel p-0 text-ink shadow-2xl backdrop:bg-black/70"
-      onClose={onClose}
       onCancel={onClose}
     >
       <div className="flex items-start justify-between gap-4 border-b border-line p-4">
@@ -252,7 +251,7 @@ function SpellDescriptionPopup({
         >
           {spell.name}
         </h3>
-        <Button onClick={() => dialogRef.current?.close()}>Close</Button>
+        <Button onClick={onClose}>Close</Button>
       </div>
       <div className="p-4">
         {isLoading && <p role="status" className="text-sm text-muted">Loading spell description…</p>}
