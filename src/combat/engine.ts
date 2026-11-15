@@ -346,7 +346,10 @@ export function delayCombatant(encounter: Encounter, combatantId: string): Encou
     currentTurnIndex: Math.max(nextIndex, 0),
     round: encounter.round + (wrapped ? 1 : 0),
   }
-  return wrapped ? resetRoundScopedEncounter(updatedEncounter) : updatedEncounter
+  return resetLegendaryActionsAtTurnStart(
+    updatedEncounter,
+    updatedEncounter.currentTurnIndex,
+  )
 }
 
 export const delayTurn = delayCombatant
@@ -403,12 +406,15 @@ export function resumeCombatant(
     ? insertIndex
     : encounter.currentTurnIndex + (insertIndex <= encounter.currentTurnIndex ? 1 : 0)
 
-  return {
+  const updatedEncounter = {
     ...encounter,
     combatants: updatedCombatants,
     delayedCombatants: delayedCombatants.filter((combatant) => combatant.id !== combatantId),
     currentTurnIndex: nextCurrentTurnIndex,
   }
+  return resumeNow
+    ? resetLegendaryActionsAtTurnStart(updatedEncounter, insertIndex)
+    : updatedEncounter
 }
 
 export const resumeTurn = resumeCombatant
@@ -425,10 +431,13 @@ export function nextTurn(encounter: Encounter): Encounter {
   const wrapped = nextReadyIndex <= encounter.currentTurnIndex
 
   if (!wrapped) {
-    return { ...encounter, currentTurnIndex: nextReadyIndex }
+    return resetLegendaryActionsAtTurnStart(
+      { ...encounter, currentTurnIndex: nextReadyIndex },
+      nextReadyIndex,
+    )
   }
 
-  return resetRoundScopedEncounter({
+  const updatedEncounter = {
     ...encounter,
     combatants: encounter.combatants.map((combatant) => ({
       ...combatant,
@@ -441,7 +450,8 @@ export function nextTurn(encounter: Encounter): Encounter {
     })),
     currentTurnIndex: nextReadyIndex,
     round: encounter.round + 1,
-  })
+  }
+  return resetLegendaryActionsAtTurnStart(updatedEncounter, nextReadyIndex)
 }
 
 export function updateCreatureHp(
@@ -590,35 +600,27 @@ function adjustResourceCount(
   }
 }
 
-function resetRoundScopedResources(
-  combatants: CombatantState[],
-  delayedCombatants: CombatantState[] = [],
-): { combatants: CombatantState[]; delayedCombatants: CombatantState[] } {
-  const reset = (combatant: CombatantState): CombatantState => {
-    const state = combatant.bossResourcesState
-    if (!state) return combatant
-    return {
-      ...combatant,
-      bossResourcesState: {
-        ...state,
-        ...(state.legendaryActions
-          ? { legendaryActions: { ...state.legendaryActions, used: 0 } }
-          : {}),
-      },
-    }
-  }
-  return {
-    combatants: combatants.map(reset),
-    delayedCombatants: delayedCombatants.map(reset),
-  }
-}
+function resetLegendaryActionsAtTurnStart(
+  encounter: Encounter,
+  combatantIndex: number,
+): Encounter {
+  const combatant = encounter.combatants[combatantIndex]
+  const state = combatant?.bossResourcesState
+  if (!state?.legendaryActions) return encounter
 
-function resetRoundScopedEncounter(encounter: Encounter): Encounter {
+  const updatedCombatants = [...encounter.combatants]
+  updatedCombatants[combatantIndex] = {
+    ...combatant,
+    bossResourcesState: {
+      ...state,
+      legendaryActions: {
+        ...state.legendaryActions,
+        used: 0,
+      },
+    },
+  }
   return {
     ...encounter,
-    ...resetRoundScopedResources(
-      encounter.combatants,
-      encounter.delayedCombatants ?? [],
-    ),
+    combatants: updatedCombatants,
   }
 }

@@ -329,7 +329,7 @@ describe('combat engine', () => {
     })
   })
 
-  it('resets round-scoped resources at round rollover, preserving other resource usage', () => {
+  it('resets legendary actions at the creature turn, not at round rollover', () => {
     const boss = {
       ...creature,
       bossResources: {
@@ -340,9 +340,19 @@ describe('combat engine', () => {
       },
     }
     const started = startEncounter(
-      { ...encounter, creatureSnapshots: { [boss.id]: boss } },
-      party,
-      { 'pc-1': 12 },
+      {
+        ...encounter,
+        creatureGroups: [{ ...encounter.creatureGroups[0], initiative: 18 }],
+        creatureSnapshots: { [boss.id]: boss },
+      },
+      {
+        ...party,
+        members: [
+          ...party.members,
+          { id: 'pc-2', name: 'Tarin', notes: 'Fighter' },
+        ],
+      },
+      { 'pc-1': 25, 'pc-2': 12 },
       (() => {
         let id = 0
         return () => `boss-${id++}`
@@ -351,7 +361,7 @@ describe('combat engine', () => {
     const bossCombatant = started.combatants.find(
       (combatant) => combatant.type === 'creature',
     )!
-    const spent = ([
+    const spentBeforeCreatureTurn = ([
       ['spellSlots', 1],
       ['legendaryActions', undefined],
       ['legendaryResistances', undefined],
@@ -360,28 +370,49 @@ describe('combat engine', () => {
         adjustBossResource(updated, bossCombatant.id, resource, 'spend', level),
       started,
     )
-    const next = nextTurn(spent)
-    const stateBeforeWrap = next.combatants.find(
+    const creatureTurn = nextTurn(spentBeforeCreatureTurn)
+    const stateAtCreatureTurn = creatureTurn.combatants.find(
       (combatant) => combatant.id === bossCombatant.id,
     )?.bossResourcesState
-    const wrapped = nextTurn(next)
-    const state = wrapped.combatants.find(
+    const spentDuringCreatureTurn = adjustBossResource(
+      creatureTurn,
+      bossCombatant.id,
+      'legendaryActions',
+      'spend',
+    )
+    const nextPlayerTurn = nextTurn(spentDuringCreatureTurn)
+    const nextRound = nextTurn(nextPlayerTurn)
+    const stateAfterRoundWrap = nextRound.combatants.find(
+      (combatant) => combatant.id === bossCombatant.id,
+    )?.bossResourcesState
+    const nextCreatureTurn = nextTurn(nextRound)
+    const stateAtNextCreatureTurn = nextCreatureTurn.combatants.find(
       (combatant) => combatant.id === bossCombatant.id,
     )?.bossResourcesState
 
-    expect(wrapped.round).toBe(2)
-    expect(next.round).toBe(1)
-    expect(stateBeforeWrap).toMatchObject({
-      legendaryActions: { used: 1 },
-    })
-    expect(state).toMatchObject({
-      spellSlots: { 1: { used: 1 } },
+    expect(creatureTurn.combatants[creatureTurn.currentTurnIndex].id).toBe(
+      bossCombatant.id,
+    )
+    expect(stateAtCreatureTurn).toMatchObject({
       legendaryActions: { used: 0 },
+    })
+    expect(nextRound.round).toBe(2)
+    expect(stateAfterRoundWrap).toMatchObject({
+      spellSlots: { 1: { used: 1 } },
+      legendaryActions: { used: 1 },
+      legendaryResistances: { used: 1 },
+    })
+    expect(nextCreatureTurn.combatants[nextCreatureTurn.currentTurnIndex].id).toBe(
+      bossCombatant.id,
+    )
+    expect(stateAtNextCreatureTurn).toMatchObject({
+      legendaryActions: { used: 0 },
+      spellSlots: { 1: { used: 1 } },
       legendaryResistances: { used: 1 },
     })
   })
 
-  it('resets round-scoped resources when delaying the last turn crosses a round boundary', () => {
+  it('resets legendary actions when a delayed creature resumes its turn', () => {
     const boss = {
       ...creature,
       bossResources: {
@@ -420,6 +451,15 @@ describe('combat engine', () => {
 
     expect(delayed.round).toBe(2)
     expect(state).toMatchObject({
+      spellSlots: { 1: { used: 1 } },
+      legendaryActions: { used: 1 },
+      legendaryResistances: { used: 1 },
+    })
+    const resumed = resumeCombatant(delayed, bossCombatant.id)
+    expect(resumed.combatants[resumed.currentTurnIndex].id).toBe(bossCombatant.id)
+    expect(
+      resumed.combatants[resumed.currentTurnIndex].bossResourcesState,
+    ).toMatchObject({
       spellSlots: { 1: { used: 1 } },
       legendaryActions: { used: 0 },
       legendaryResistances: { used: 1 },
