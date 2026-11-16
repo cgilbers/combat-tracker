@@ -144,6 +144,31 @@ describe('combat engine', () => {
     })
   })
 
+  it('adds reinforcements during combat without moving the active turn or round', () => {
+    const started = startTestEncounter()
+    const activeCombatantId = started.combatants[started.currentTurnIndex].id
+    const goblin: Creature = {
+      id: 'goblin',
+      source: 'custom',
+      name: 'Goblin',
+      ac: 15,
+      hpAverage: 7,
+      dexterityModifier: 2,
+    }
+
+    const reinforced = addCreatureGroup(started, goblin, 2, () => 'group-2', 25)
+
+    expect(reinforced.round).toBe(1)
+    expect(reinforced.currentTurnIndex).toBeGreaterThanOrEqual(0)
+    expect(reinforced.combatants[reinforced.currentTurnIndex].id).toBe(activeCombatantId)
+    expect(reinforced.combatants.map((combatant) => combatant.name)).toEqual([
+      'Goblin 1',
+      'Goblin 2',
+      'Ash Wyrmling',
+      'Mira',
+    ])
+  })
+
   it('initializes missing resource state when resuming an older encounter', () => {
     const boss = {
       ...creature,

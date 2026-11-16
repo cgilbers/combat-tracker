@@ -32,25 +32,83 @@ export function addCreatureGroup(
   creature: Creature,
   quantity: number,
   createId: () => string,
+  initiative: number | null = null,
 ): Encounter {
-  if (encounter.status !== 'draft') throw new Error('Only draft encounters can be edited.')
-
   const count = Math.min(Math.max(Math.floor(quantity) || 1, 1), 12)
   const snapshot = encounter.creatureSnapshots[creature.id] ?? structuredClone(creature)
-  const group: EncounterCreatureGroup = {
-    id: createId(),
-    creatureId: creature.id,
-    quantity: count,
-    initiative: null,
+
+  if (encounter.status === 'draft') {
+    const group: EncounterCreatureGroup = {
+      id: createId(),
+      creatureId: creature.id,
+      quantity: count,
+      initiative: null,
+    }
+
+    return {
+      ...encounter,
+      creatureGroups: [...encounter.creatureGroups, group],
+      creatureSnapshots: {
+        ...encounter.creatureSnapshots,
+        [creature.id]: snapshot,
+      },
+    }
   }
+
+  if (encounter.status !== 'active') {
+    throw new Error('Only draft or active encounters can be edited.')
+  }
+
+  const normalizedInitiative = Number.isFinite(initiative) ? initiative : null
+  const existingGroup = encounter.creatureGroups.find(
+    (group) =>
+      group.creatureId === creature.id &&
+      group.initiative === normalizedInitiative,
+  )
+  const nextGroup: EncounterCreatureGroup = {
+    id: existingGroup?.id ?? createId(),
+    creatureId: creature.id,
+    quantity: existingGroup ? existingGroup.quantity + count : count,
+    initiative: normalizedInitiative,
+  }
+  const updatedGroups = existingGroup
+    ? encounter.creatureGroups.map((group) =>
+        group.id === existingGroup.id ? nextGroup : group,
+      )
+    : [...encounter.creatureGroups, nextGroup]
+
+  const groupIndexOffset = existingGroup ? existingGroup.quantity : 0
+  const addedCombatants = Array.from({ length: count }, (_, index) => {
+    const bossResourcesState = createBossResourceState(creature)
+    return {
+      id: createId(),
+      type: 'creature' as const,
+      refId: creature.id,
+      groupId: nextGroup.id,
+      name: `${creature.name}${count > 1 ? ` ${groupIndexOffset + index + 1}` : ''}`,
+      initiative: normalizedInitiative,
+      currentHp: creature.hpAverage,
+      maxHp: creature.hpAverage,
+      ac: creature.ac,
+      ...(bossResourcesState ? { bossResourcesState } : {}),
+    }
+  })
+
+  const updatedCombatants = sortCombatants([...encounter.combatants, ...addedCombatants])
+  const activeCombatantId = encounter.combatants[encounter.currentTurnIndex]?.id
+  const currentTurnIndex = activeCombatantId
+    ? Math.max(updatedCombatants.findIndex((combatant) => combatant.id === activeCombatantId), 0)
+    : updatedCombatants.findIndex((combatant) => !combatant.isDefeated)
 
   return {
     ...encounter,
-    creatureGroups: [...encounter.creatureGroups, group],
+    creatureGroups: updatedGroups,
     creatureSnapshots: {
       ...encounter.creatureSnapshots,
       [creature.id]: snapshot,
     },
+    combatants: updatedCombatants,
+    currentTurnIndex: Math.max(currentTurnIndex, 0),
   }
 }
 
