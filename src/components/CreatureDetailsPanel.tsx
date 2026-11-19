@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Panel } from './Panel'
 import { Button } from './Button'
-import { loadSrdSpellDescription } from '../data/srd'
+import {
+  loadSrdSpellCatalog,
+  loadSrdSpellDescription,
+  type SrdSpellSummary,
+} from '../data/srd'
 import type { BossResourceKind, ResourceAdjustment } from '../combat/engine'
 import type {
   AbilityScores,
@@ -54,11 +58,13 @@ function DetailSection({
   entries,
   srdSpells = [],
   spellDescriptions = [],
+  srdSpellCatalog = [],
 }: {
   title: string
   entries?: CreatureAction[]
   srdSpells?: SrdSpellReference[]
   spellDescriptions?: CreatureSpellDescription[]
+  srdSpellCatalog?: SrdSpellSummary[]
 }) {
   const [selectedSpell, setSelectedSpell] = useState<SpellPopupContent | null>(null)
   if (!entries?.length) return null
@@ -72,6 +78,14 @@ function DetailSection({
   }
   for (const spell of spellDescriptions) {
     spellsByName.set(spell.name.toLowerCase(), spell)
+  }
+  for (const spell of srdSpellCatalog) {
+    const existingSpell = spellsByName.get(spell.name.toLowerCase())
+    if (existingSpell?.description) continue
+    spellsByName.set(spell.name.toLowerCase(), {
+      name: spell.name,
+      srdIndex: spell.index,
+    })
   }
   const spellPattern =
     spellsByName.size > 0
@@ -357,6 +371,17 @@ export function CreatureDetailsPanel({
   canAdjustBossResources = false,
   onAdjustBossResource,
 }: CreatureDetailsPanelProps) {
+  const [srdSpellCatalog, setSrdSpellCatalog] = useState<SrdSpellSummary[]>([])
+  useEffect(() => {
+    let isCancelled = false
+    loadSrdSpellCatalog().then((spells) => {
+      if (!isCancelled) setSrdSpellCatalog(spells)
+    })
+    return () => {
+      isCancelled = true
+    }
+  }, [])
+
   if (!creature) {
     return (
       <Panel variant="default" className="h-full min-h-0 overflow-y-auto">
@@ -543,6 +568,7 @@ export function CreatureDetailsPanel({
           entries={displayedTraits}
           srdSpells={creature.srdSpells}
           spellDescriptions={creature.spellDescriptions}
+          srdSpellCatalog={srdSpellCatalog}
         />
         <DetailSection title="ACTIONS" entries={creature.actions} />
         <DetailSection title="REACTIONS" entries={creature.reactions} />

@@ -6,6 +6,7 @@ import type {
 
 export const SRD_CACHE_KEY = 'combat-tracker:srd-creatures'
 export const SRD_CATALOG_CACHE_KEY = 'combat-tracker:srd-catalog'
+export const SRD_SPELL_CATALOG_CACHE_KEY = 'combat-tracker:srd-spell-catalog'
 export const SRD_ATTRIBUTION =
   'This work includes material taken from the System Reference Document 5.1 (SRD 5.1) by Wizards of the Coast LLC. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License. Creature data is retrieved from the D&D 5e API.'
 
@@ -14,9 +15,19 @@ export type SrdMonsterSummary = {
   name: string
 }
 
+export type SrdSpellSummary = {
+  index: string
+  name: string
+  level: number
+}
+
 export type SrdProvider = {
   listMonsters(): Promise<SrdMonsterSummary[]>
   fetchMonster(index: string): Promise<unknown>
+}
+
+export type SrdSpellCatalogProvider = {
+  listSpells(): Promise<SrdSpellSummary[]>
 }
 
 export type SrdSpellDescription = {
@@ -450,6 +461,42 @@ function readCachedSrdCatalog(): SrdMonsterSummary[] {
   }
 }
 
+function readCachedSrdSpellCatalog(): SrdSpellSummary[] {
+  const storage = getStorage()
+  if (!storage) return []
+
+  try {
+    const raw = storage.getItem(SRD_SPELL_CATALOG_CACHE_KEY)
+    if (!raw) return []
+
+    const parsed = JSON.parse(raw) as { spells?: unknown }
+    if (!Array.isArray(parsed.spells)) return []
+    return parsed.spells.filter(
+      (spell): spell is SrdSpellSummary =>
+        Boolean(spell) &&
+        typeof spell === 'object' &&
+        typeof (spell as SrdSpellSummary).index === 'string' &&
+        typeof (spell as SrdSpellSummary).name === 'string' &&
+        typeof (spell as SrdSpellSummary).level === 'number' &&
+        Number.isInteger((spell as SrdSpellSummary).level) &&
+        (spell as SrdSpellSummary).level >= 0 &&
+        (spell as SrdSpellSummary).level <= 9,
+    )
+  } catch {
+    return []
+  }
+}
+
+function saveCachedSrdSpellCatalog(spells: SrdSpellSummary[]): void {
+  const storage = getStorage()
+  if (!storage) return
+
+  storage.setItem(
+    SRD_SPELL_CATALOG_CACHE_KEY,
+    JSON.stringify({ version: 1, spells }),
+  )
+}
+
 function saveCachedSrdCatalog(creatures: SrdMonsterSummary[]): void {
   const storage = getStorage()
   if (!storage) return
@@ -482,6 +529,27 @@ export class DnD5eApiProvider implements SrdProvider {
           entry.name.trim() !== '',
       )
       .map(({ index, name }) => ({ index, name }))
+  }
+
+  async listSpells(): Promise<SrdSpellSummary[]> {
+    const payload = await this.fetchJson(`${this.baseUrl}/spells`)
+    const results = typeof payload === 'object' && payload !== null && 'results' in payload
+      ? (payload as { results?: Array<{ index?: string; name?: string; level?: number }> }).results ?? []
+      : []
+
+    return results
+      .filter(
+        (entry): entry is { index: string; name: string; level: number } =>
+          typeof entry.index === 'string' &&
+          entry.index.trim() !== '' &&
+          typeof entry.name === 'string' &&
+          entry.name.trim() !== '' &&
+          typeof entry.level === 'number' &&
+          Number.isInteger(entry.level) &&
+          entry.level >= 0 &&
+          entry.level <= 9,
+      )
+      .map(({ index, name, level }) => ({ index, name, level }))
   }
 
   async fetchMonster(index: string): Promise<unknown> {
@@ -560,6 +628,18 @@ export async function loadSrdCatalog(
       creatures: [],
       error: error instanceof Error ? error : new Error('Unknown SRD catalog failure.'),
     }
+  }
+}
+
+export async function loadSrdSpellCatalog(
+  provider: SrdSpellCatalogProvider = new DnD5eApiProvider(),
+): Promise<SrdSpellSummary[]> {
+  try {
+    const spells = await provider.listSpells()
+    saveCachedSrdSpellCatalog(spells)
+    return spells
+  } catch {
+    return readCachedSrdSpellCatalog()
   }
 }
 
