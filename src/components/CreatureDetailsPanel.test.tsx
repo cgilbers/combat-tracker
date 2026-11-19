@@ -136,4 +136,38 @@ describe('CreatureDetailsPanel spell popup', () => {
     expect(container.textContent).toContain('The spellcaster has Shield prepared.')
     expect(container.textContent).not.toContain('SPELLCASTING & SPELLS')
   })
+
+  it('links custom creature spell names found in the SRD catalog', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          results: [{ index: 'shield', name: 'Shield', level: 1 }],
+        }),
+      }),
+    )
+    container = document.createElement('div')
+    document.body.append(container)
+    root = createRoot(container)
+
+    await act(async () => {
+      root.render(
+        <CreatureDetailsPanel
+          creature={{
+            ...creature,
+            source: 'custom',
+            srdSpells: undefined,
+            spellDescriptions: undefined,
+            spellcasting: 'The creature has Shield prepared.',
+            traits: undefined,
+          }}
+        />,
+      )
+    })
+
+    const shieldButton = [...container.querySelectorAll<HTMLButtonElement>('button')]
+      .find((button) => button.textContent === 'Shield')
+    expect(shieldButton).toBeDefined()
+  })
 })

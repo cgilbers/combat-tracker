@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   SRD_CACHE_KEY,
+  SRD_SPELL_CATALOG_CACHE_KEY,
   DnD5eApiProvider,
   importSrdCreature,
   loadSrdCatalog,
+  loadSrdSpellCatalog,
   loadSrdSpellDescription,
   normalizeSrdCreature,
   readCachedSrdCreatures,
@@ -148,6 +150,23 @@ describe('SRD creature import', () => {
       description:
         'An invisible barrier of magical force appears.\n\nAt Higher Levels. No additional effect at higher levels.',
     })
+  })
+
+  it('loads and caches the SRD spell catalog', async () => {
+    const spells = await loadSrdSpellCatalog({
+      listSpells: async () => [
+        { index: 'shield', name: 'Shield', level: 1 },
+        { index: 'mage-hand', name: 'Mage Hand', level: 0 },
+      ],
+    })
+
+    expect(spells).toEqual([
+      { index: 'shield', name: 'Shield', level: 1 },
+      { index: 'mage-hand', name: 'Mage Hand', level: 0 },
+    ])
+    expect(globalThis.localStorage.getItem(SRD_SPELL_CATALOG_CACHE_KEY)).toContain(
+      '"index":"shield"',
+    )
   })
 
   it('rejects invalid SRD spell identifiers before fetching', async () => {
